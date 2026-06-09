@@ -1,0 +1,136 @@
+/* WoxTheme — Default dark/light theme for WoxNote
+   Override CSS variables to create your own theme.
+   Copy this file to make a new theme.
+   ======================================================== */
+
+:root {
+  --bg-primary: #171a1f;
+  --bg-secondary: #1d2127;
+  --bg-tertiary: #20252c;
+  --bg-editor: #1b1f25;
+  --bg-input: #181c21;
+  --bg-hover: #313944;
+  --bg-active: #303844;
+  --border-primary: #2a3038;
+  --border-secondary: #343d48;
+  --border-focus: #414b58;
+  --text-primary: #f2f5f7;
+  --text-secondary: #d7dce2;
+  --text-tertiary: #b6c0ca;
+  --text-muted: #7f8a96;
+  --text-link: #8cc8ff;
+  --accent: #8cc8ff;
+  --accent-bg: #2b4a6e;
+  --danger: #ffb4ab;
+  --danger-bg: #443039;
+  --code-bg: #2b333d;
+  --code-text: #f0d49a;
+  --tag-color: #90d6b2;
+  --wiki-color: #8cc8ff;
+}
+
+.theme-light {
+  --bg-primary: #f4f6f8;
+  --bg-secondary: #eef1f4;
+  --bg-tertiary: #f8fafb;
+  --bg-editor: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: #dfe8ef;
+  --bg-active: #dfe8ef;
+  --border-primary: #d9dee5;
+  --border-secondary: #d7dee6;
+  --border-focus: #cbd4dd;
+  --text-primary: #1e2732;
+  --text-secondary: #26313d;
+  --text-tertiary: #3d4855;
+  --text-muted: #697481;
+  --text-link: #2b5f8a;
+  --accent: #2b5f8a;
+  --accent-bg: #dde8f6;
+  --danger: #9f2c25;
+  --danger-bg: #fde8e5;
+  --code-bg: #eef2f5;
+  --code-text: #7a4d00;
+  --tag-color: #116329;
+  --wiki-color: #0969da;
+}
+
+/* Apply variables */
+body { color: var(--text-secondary); background: var(--bg-primary); }
+.ribbon { background: var(--bg-secondary); border-color: var(--border-primary); }
+.file-sidebar { background: var(--bg-tertiary); border-color: var(--border-primary); }
+.context-sidebar { background: var(--bg-tertiary); border-color: var(--border-primary); }
+.main-pane { background: var(--bg-editor); }
+.document-surface { background: var(--bg-editor); }
+textarea { background: var(--bg-editor); color: var(--text-secondary); }
+.vault-header { border-color: var(--border-primary); }
+.vault-header h1 { color: var(--text-primary); }
+.vault-header p { color: var(--text-muted); }
+.note-title span { color: var(--text-primary); }
+.note-title small { color: var(--text-muted); }
+.note-toolbar { border-color: var(--border-primary); }
+.tabs-bar { background: var(--bg-secondary); border-color: var(--border-primary); }
+.tab { background: var(--bg-tertiary); color: var(--text-tertiary); border-color: var(--border-primary); }
+.tab.active { background: var(--bg-active); color: var(--text-primary); }
+.ribbon-button { color: var(--text-tertiary); }
+.ribbon-button:hover,.ribbon-button.active { color: var(--text-primary); background: var(--bg-hover); }
+.tree-row { color: var(--text-tertiary); }
+.tree-row:hover,.tree-row.active { color: var(--text-primary); background: var(--bg-active); }
+.folder-row { color: var(--text-primary); }
+.mlb-block:hover { background: var(--bg-hover); }
+.file-filter { background: var(--bg-input); border-color: var(--border-secondary); color: var(--text-muted); }
+.file-filter input { color: var(--text-secondary); }
+.path-row input { background: var(--bg-input); border-color: var(--border-secondary); color: var(--text-tertiary); }
+.quick-open { background: var(--bg-active); color: var(--text-tertiary); }
+.quick-open:hover { background: var(--bg-hover); color: var(--text-primary); }
+.icon-button { color: var(--text-tertiary); }
+.icon-button:hover { color: var(--text-primary); background: var(--bg-hover); }
+.secondary-action { background: var(--bg-hover); color: var(--text-secondary); }
+.vault-suggestions button,.context-section button,.system-open,.palette-results button,.sidebar-search-results button { background: var(--bg-active); color: var(--text-tertiary); }
+.vault-suggestions button:hover,.context-section button:hover,.system-open:hover,.palette-results button:hover,.sidebar-search-results button:hover { background: var(--bg-hover); color: var(--text-primary); }
+.context-title { color: var(--text-primary); }
+.muted { color: var(--text-muted); }
+.command-palette,.settings-panel,.settings-panel-v2,.file-context-menu,.confirm-dialog { background: var(--bg-tertiary); border-color: var(--border-focus); }
+.settings-sidebar { background: var(--bg-input); border-color: var(--border-primary); }
+.settings-tab { color: var(--text-muted); }
+.settings-tab:hover { color: var(--text-secondary); background: var(--bg-hover); }
+.settings-tab.active { color: var(--text-primary); background: var(--bg-active); }
+.settings-header { border-color: var(--border-primary); }
+.settings-header h2,.settings-section h3 { color: var(--text-primary); }
+.settings-header p,.setting-field>span,.setting-row>span,.switch-row>span { color: var(--text-tertiary); }
+.settings-section { border-color: var(--border-secondary); }
+.font-select,.font-input { background: var(--bg-input); border-color: var(--border-secondary); color: var(--text-secondary); }
+.segmented-control { background: var(--bg-input); border-color: var(--border-secondary); }
+.segmented-control button { color: var(--text-tertiary); }
+.segmented-control button.active,.segmented-control button:hover { color: var(--text-primary); background: var(--bg-hover); }
+.file-context-menu button { color: var(--danger); }
+.file-context-menu button:hover { background: var(--danger-bg); }
+.confirm-icon { background: var(--danger-bg); color: var(--danger); }
+.confirm-copy h2 { color: var(--text-primary); }
+.confirm-copy p { color: var(--text-tertiary); }
+.confirm-copy code { background: var(--bg-input); color: var(--text-secondary); }
+.markdown-preview { color: var(--text-secondary); }
+.markdown-preview h1,.markdown-preview h2,.markdown-preview h3 { color: var(--text-primary); }
+.markdown-preview code { background: var(--code-bg); color: var(--code-text); }
+.wiki-link { color: var(--wiki-color); }
+.tag-chip { color: var(--tag-color); }
+.markdown-preview table { border-color: var(--border-primary); }
+.markdown-preview th,.markdown-preview td { border-color: var(--border-primary); }
+.markdown-preview th { background: var(--bg-active); color: var(--text-primary); }
+.markdown-preview td { background: var(--bg-editor); }
+.markdown-preview tr:hover td { background: var(--bg-hover); }
+.markdown-preview pre { background: var(--bg-input); border-color: var(--border-primary); }
+.markdown-preview pre code { color: var(--text-secondary); }
+.mlb-editing { border-color: var(--accent); background: var(--bg-input); }
+.mlb-textarea { background: transparent; color: var(--text-secondary); }
+.mlb-actions { border-color: var(--border-primary); background: var(--bg-secondary); }
+.mlb-ai-trigger { background: var(--accent-bg); color: var(--accent); }
+.mlb-hint { color: var(--text-muted); }
+.tools-row button { color: var(--text-tertiary); }
+.tools-row button:hover,.tools-row button.active { color: var(--text-primary); background: var(--bg-hover); }
+.color-chip { border-color: var(--border-secondary); }
+.more-colors { color: var(--text-muted); }
+.more-colors:hover { color: var(--text-primary); background: var(--bg-hover); }
+::-webkit-scrollbar-track { background: var(--bg-editor); }
+::-webkit-scrollbar-thumb { background: var(--bg-hover); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }

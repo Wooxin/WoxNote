@@ -1,0 +1,31 @@
+[package]
+name = "woxnote"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "woxnote_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-ico"] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+rfd = "0.15"
+notify = { version = "7", features = ["macos_kqueue"] }
+regex = "1"
+pulldown-cmark = "0.12"
+image = "0.25"
+calamine = "0.26"
+lopdf = "0.34"
+zip = "2"
+base64 = "0.22"
+quick-xml = "0.37"
+walkdir = "2"
