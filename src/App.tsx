@@ -23,6 +23,7 @@ function AppInner() {
   const vault = useVaultContext();
   const [creating, setCreating] = useState(false);
 
+  // ── ALL hooks must be here, before any conditional returns ──
   const handlePickVault = useCallback(async () => {
     setCreating(true);
     try {
@@ -36,7 +37,76 @@ function AppInner() {
     setCreating(false);
   }, [app]);
 
-  // Loading state while settings are being read
+  useEffect(() => {
+    const id = "custom-theme-css";
+    let link = document.getElementById(id) as HTMLLinkElement | null;
+    if (app.themeFile) {
+      if (!link) {
+        link = document.createElement("link");
+        link.id = id;
+        link.rel = "stylesheet";
+        document.head.appendChild(link);
+      }
+      link.href = `/themes/${app.themeFile}`;
+    } else {
+      if (link) link.remove();
+    }
+  }, [app.themeFile]);
+
+  useEffect(() => {
+    if (app.settingsLoaded && app.activeVault) {
+      void vault.activateVault(app.activeVault);
+    }
+  }, [app.settingsLoaded, app.activeVault]);
+
+  useEffect(() => {
+    if (vault.entries.length === 0) return;
+    const dirPaths = vault.entries.filter((e) => e.isDir).map((e) => e.path);
+    if (dirPaths.length === 0) return;
+
+    const next = new Set(app.collapsedDirs);
+    let changed = false;
+
+    for (const dir of dirPaths) {
+      if (!next.has(dir)) { next.add(dir); changed = true; }
+    }
+
+    if (vault.selectedPath) {
+      const parts = vault.selectedPath.split("/");
+      for (let i = 1; i < parts.length; i++) {
+        const dirPath = parts.slice(0, i).join("/");
+        if (next.has(dirPath)) { next.delete(dirPath); changed = true; }
+      }
+    }
+
+    if (changed) {
+      app.setCollapsedDirs(next);
+      if (!app.vaultInitialized) app.setVaultInitialized(true);
+    } else if (!app.vaultInitialized) {
+      app.setVaultInitialized(true);
+    }
+  }, [app.vaultInitialized, vault.entries, vault.selectedPath]);
+
+  useKeyboardShortcuts({
+    enableKeyboardShortcuts: app.enableKeyboardShortcuts,
+    saveCurrent: vault.saveCurrent,
+    createNote: vault.createNote,
+    openPalette: () => vault.setIsPaletteOpen(true),
+    closeCurrentTab: () => {
+      if (vault.selectedPath) void vault.closeTab(vault.selectedPath);
+    },
+    shortcutSave: app.shortcutSave,
+    shortcutPalette: app.shortcutPalette,
+    shortcutNewNote: app.shortcutNewNote,
+    shortcutCloseTab: app.shortcutCloseTab,
+  });
+
+  const handleOpenInSystem = (path: string) => {
+    if (isDesktop) void openPath(path);
+  };
+
+  // ── Conditional rendering ──
+
   if (!app.settingsLoaded) {
     return (
       <ToastProvider position={app.toastPosition}>
@@ -49,7 +119,6 @@ function AppInner() {
     );
   }
 
-  // No vault selected — show vault picker
   if (!app.activeVault) {
     return (
       <ToastProvider position={app.toastPosition}>
@@ -89,76 +158,6 @@ function AppInner() {
       </ToastProvider>
     );
   }
-
-  useEffect(() => {
-    const id = "custom-theme-css";
-    let link = document.getElementById(id) as HTMLLinkElement | null;
-    if (app.themeFile) {
-      if (!link) {
-        link = document.createElement("link");
-        link.id = id;
-        link.rel = "stylesheet";
-        document.head.appendChild(link);
-      }
-      link.href = `/themes/${app.themeFile}`;
-    } else {
-      if (link) link.remove();
-    }
-  }, [app.themeFile]);
-
-  useEffect(() => {
-    if (app.settingsLoaded && app.activeVault) {
-      void vault.activateVault(app.activeVault);
-    }
-  }, [app.settingsLoaded, app.activeVault]);
-
-  useEffect(() => {
-    if (vault.entries.length === 0) return;
-    const dirPaths = vault.entries.filter((e) => e.isDir).map((e) => e.path);
-    if (dirPaths.length === 0) return;
-
-    const next = new Set(app.collapsedDirs);
-    let changed = false;
-
-    // Collapse any NEW directories that weren't in the set before
-    for (const dir of dirPaths) {
-      if (!next.has(dir)) { next.add(dir); changed = true; }
-    }
-
-    // Auto-expand parent directories to reveal the currently selected note
-    if (vault.selectedPath) {
-      const parts = vault.selectedPath.split("/");
-      for (let i = 1; i < parts.length; i++) {
-        const dirPath = parts.slice(0, i).join("/");
-        if (next.has(dirPath)) { next.delete(dirPath); changed = true; }
-      }
-    }
-
-    if (changed) {
-      app.setCollapsedDirs(next);
-      if (!app.vaultInitialized) app.setVaultInitialized(true);
-    } else if (!app.vaultInitialized) {
-      app.setVaultInitialized(true);
-    }
-  }, [app.vaultInitialized, vault.entries, vault.selectedPath]);
-
-  useKeyboardShortcuts({
-    enableKeyboardShortcuts: app.enableKeyboardShortcuts,
-    saveCurrent: vault.saveCurrent,
-    createNote: vault.createNote,
-    openPalette: () => vault.setIsPaletteOpen(true),
-    closeCurrentTab: () => {
-      if (vault.selectedPath) void vault.closeTab(vault.selectedPath);
-    },
-    shortcutSave: app.shortcutSave,
-    shortcutPalette: app.shortcutPalette,
-    shortcutNewNote: app.shortcutNewNote,
-    shortcutCloseTab: app.shortcutCloseTab,
-  });
-
-  const handleOpenInSystem = (path: string) => {
-    if (isDesktop) void openPath(path);
-  };
 
   return (
     <ToastProvider position={app.toastPosition}>
