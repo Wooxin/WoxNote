@@ -1,6 +1,4 @@
 import { FilePlus, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react";
-import { isTauri } from "@tauri-apps/api/core";
-import { openPath } from "@tauri-apps/plugin-opener";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 import { appInvoke } from "../bridge";
@@ -9,11 +7,12 @@ export function ContextMenu() {
   const app = useAppContext();
   const vault = useVaultContext();
 
-  const handleOpenInExplorer = (entryPath: string, isDir: boolean) => {
+  const handleOpenInExplorer = async (entryPath: string, isDir: boolean) => {
     const basePath = (app.activeVault + "\\" + entryPath).replace(/\//g, "\\");
-    // For files, open the parent directory so Explorer shows the file location
     const targetPath = isDir ? basePath : basePath.substring(0, basePath.lastIndexOf("\\"));
-    if (isTauri()) void openPath(targetPath);
+    try {
+      await appInvoke("open_in_explorer", { path: targetPath });
+    } catch { /* fallback: try opener plugin */ }
   };
 
   const handleNewFolder = async (parentPath: string) => {

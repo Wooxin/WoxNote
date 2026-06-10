@@ -64,6 +64,7 @@ export async function appInvoke<T>(command: string, args?: Record<string, unknow
     case "paste_image": { const name = "image_" + Date.now() + ".png"; mockStore[name] = "[binary]"; return name as T; }
     case "count_words": { const text = String(args?.content ?? ""); const cjk = (text.match(/[\u4e00-\u9fff]/g) || []).length; const eng = (text.match(/[a-zA-Z0-9]+/g) || []).length; return (cjk + eng) as T; }
     case "extract_toc_rust": { const items: { level: number; text: string }[] = []; const clean = String(args?.content ?? "").replace(/```[\s\S]*?```/g, ""); const re = /^(#{1,3})\s+(.+)$/gm; let m; while ((m = re.exec(clean)) !== null) items.push({ level: m[1].length, text: m[2].trim() }); return items as T; }
+    case "open_in_explorer": return undefined as T;
     case "export_note_html": return "<html><body><h1>Mock</h1></body></html>" as T;
     case "list_versions": return [] as T;
     case "fuzzy_match_titles": { const q = String(args?.query ?? "").toLowerCase(); const titles = Object.keys(mockStore).filter(k => k.endsWith('.md')).map(k => k.replace(/\.md$/, '')).filter(t => t.toLowerCase().includes(q)).slice(0, 20).map(t => ({ title: t, path: t + '.md', score: t.toLowerCase().startsWith(q) ? 100 : 50 })); return titles as T; }

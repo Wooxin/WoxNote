@@ -166,3 +166,22 @@ pub fn delete_entry(root: String, relative_path: String) -> Result<(), String> {
         fs::remove_file(path).map_err(|e| e.to_string())
     }
 }
+
+#[tauri::command]
+pub fn open_in_explorer(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
