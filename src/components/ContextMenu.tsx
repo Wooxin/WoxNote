@@ -9,9 +9,11 @@ export function ContextMenu() {
   const app = useAppContext();
   const vault = useVaultContext();
 
-  const handleOpenInExplorer = (entryPath: string) => {
-    const fullPath = app.activeVault + "\\" + entryPath.replace(/\//g, "\\");
-    if (isTauri()) void openPath(fullPath);
+  const handleOpenInExplorer = (entryPath: string, isDir: boolean) => {
+    const basePath = (app.activeVault + "\\" + entryPath).replace(/\//g, "\\");
+    // For files, open the parent directory so Explorer shows the file location
+    const targetPath = isDir ? basePath : basePath.substring(0, basePath.lastIndexOf("\\"));
+    if (isTauri()) void openPath(targetPath);
   };
 
   const handleNewFolder = async (parentPath: string) => {
@@ -52,7 +54,7 @@ export function ContextMenu() {
               <Pencil size={16} />
               <span>{app.t.rename}</span>
             </button>
-            <button onClick={() => { handleOpenInExplorer(vault.contextMenu!.entry.path); vault.setContextMenu(null); }}>
+            <button onClick={() => { handleOpenInExplorer(vault.contextMenu!.entry.path, vault.contextMenu!.entry.isDir); vault.setContextMenu(null); }}>
               <FolderOpen size={16} />
               <span>{app.t.openInSystem}</span>
             </button>
