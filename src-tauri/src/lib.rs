@@ -316,6 +316,7 @@ pub fn run() {
             commands::files::delete_entry,
             commands::files::rename_entry,
             commands::files::open_in_explorer,
+            commands::files::check_is_dir,
             commands::search::search_vault,
             commands::search::get_backlinks_for,
             commands::search::get_forward_links_for,

@@ -115,13 +115,13 @@ function AppInner() {
         for (const path of event.payload.paths) {
           void (async () => {
             try {
-              const list = await appInvoke("list_entries", { root: path });
-              if (Array.isArray(list)) {
+              const isDir = await appInvoke<boolean>("check_is_dir", { path });
+              if (isDir) {
                 const name = path.split(/[/\\]/).pop() || path;
                 app.addVault(name, path);
                 app.setActiveVault(path);
               }
-            } catch { /* not a valid vault directory */ }
+            } catch { /* not a valid path */ }
           })();
           break; // Only process first dropped item
         }

@@ -168,6 +168,11 @@ pub fn delete_entry(root: String, relative_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn check_is_dir(path: String) -> Result<bool, String> {
+    Ok(std::path::Path::new(&path).is_dir())
+}
+
+#[tauri::command]
 pub fn open_in_explorer(path: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
