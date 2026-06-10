@@ -31,10 +31,12 @@ function formatTime(ts: number): string {
 type TocItem = { level: number; text: string };
 
 function extractToc(content: string): TocItem[] {
+  // Strip fenced code blocks so #comments in code aren't treated as headings
+  const clean = content.replace(/```[\s\S]*?```/g, "");
   const items: TocItem[] = [];
   const re = /^(#{1,3})\s+(.+)$/gm;
   let match;
-  while ((match = re.exec(content)) !== null) {
+  while ((match = re.exec(clean)) !== null) {
     items.push({ level: match[1].length, text: match[2].trim() });
   }
   return items;
