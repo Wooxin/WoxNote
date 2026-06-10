@@ -55,8 +55,7 @@ export const CSS = `/* =========================================================
 
 /* Light mode text — black, not gray */
 .theme-light .cm-editor .cm-content,
-.theme-light .cm-editor .cm-line,
-.theme-light .cm-editor .cm-content * {
+.theme-light .cm-editor .cm-line {
   color: #000 !important;
 }
 

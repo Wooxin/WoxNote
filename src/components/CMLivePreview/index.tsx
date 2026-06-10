@@ -3,6 +3,10 @@ import { EditorView, keymap, highlightActiveLine, ViewUpdate, drawSelection } fr
 import { EditorState, type Extension } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { syntaxHighlighting, syntaxTree } from "@codemirror/language";
+
+// Module-level scroll-to-heading — accessible from any component
+let _scrollToHeading: ((text: string) => void) | null = null;
+export function scrollToHeading(text: string) { _scrollToHeading?.(text); }
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import { closeBrackets, autocompletion } from "@codemirror/autocomplete";
@@ -303,10 +307,12 @@ export function CMLivePreview({
           if (/^#{1,6}\s/.test(line.text) && line.text.includes(text)) { scrollTo(line.from); return; }
         }
       };
+      _scrollToHeading = scrollToHeading;
       onScrollToHeading(scrollToHeading);
     }
 
         return () => {
+      _scrollToHeading = null;
       view.contentDOM.removeEventListener("focus", handleFocusIn);
       view.contentDOM.removeEventListener("blur", handleFocusOut);
       view.dom.removeEventListener("focusout", handleFocusOut);

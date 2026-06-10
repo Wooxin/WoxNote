@@ -5,6 +5,7 @@ import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 import { titleFromPath } from "../utils/helpers";
 import { appInvoke } from "../bridge";
+import { scrollToHeading } from "./CMLivePreview";
 
 function wordCount(text: string): number {
   const chinese = (text.match(/[\u4e00-\u9fff]/g) || []).length;
@@ -69,7 +70,7 @@ export function ContextSidebar({ onOpenInSystem }: Props) {
           {displayToc.slice(0, 12).map((item, i) => (
             <button key={i} className="toc-item"
               style={{ paddingLeft: `${8 + (item.level - 1) * 12}px` }}
-              onClick={() => vault.scrollToHeading?.(item.text)}>{item.text}</button>
+              onClick={() => scrollToHeading(item.text)}>{item.text}</button>
           ))}
         </section>
       )}
