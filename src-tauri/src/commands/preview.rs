@@ -6,6 +6,7 @@ use std::{fs, path::Path, sync::LazyLock};
 
 static WIKI_LINK_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[\[([^\]]+)\]\]").unwrap());
 static TOC_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(#{1,3})\s+(.+)$").unwrap());
+static FENCE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?s)```.*?```").unwrap());
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +34,8 @@ pub struct SheetData {
 
 #[tauri::command]
 pub fn extract_toc_rust(content: String) -> Vec<TocEntry> {
-    content
+    let clean = FENCE_RE.replace_all(&content, "");
+    clean
         .lines()
         .filter_map(|line| {
             TOC_RE.captures(line).map(|caps| TocEntry {
@@ -42,6 +44,24 @@ pub fn extract_toc_rust(content: String) -> Vec<TocEntry> {
             })
         })
         .collect()
+}
+
+#[tauri::command]
+pub fn count_words(content: String) -> usize {
+    let mut count = 0usize;
+    let mut in_ascii_word = false;
+    for ch in content.chars() {
+        if ('\u{4e00}'..='\u{9fff}').contains(&ch) {
+            count += 1;
+            in_ascii_word = false;
+        } else if ch.is_ascii_alphanumeric() {
+            if !in_ascii_word { count += 1; }
+            in_ascii_word = true;
+        } else {
+            in_ascii_word = false;
+        }
+    }
+    count
 }
 
 #[tauri::command]

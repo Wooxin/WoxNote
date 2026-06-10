@@ -41,8 +41,16 @@ export function MarkdownLiveEditor() {
   }, []);
 
   const [titleValue, setTitleValue] = useState("");
+  const [wordCount, setWordCount] = useState(0);
 
-  const wordCount = (vault.content || "").match(/[\u4e00-\u9fff]|[a-zA-Z0-9]+/g)?.length ?? 0;
+  useEffect(() => {
+    let cancelled = false;
+    appInvoke<number>("count_words", { content: vault.content || "" })
+      .then(n => { if (!cancelled) setWordCount(n); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [vault.content]);
+
   const charCount = (vault.content || "").replace(/\s/g, "").length;
 
   const insertAtEnd = useCallback((template: string) => {

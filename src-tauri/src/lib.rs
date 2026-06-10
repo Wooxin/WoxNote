@@ -335,6 +335,7 @@ pub fn run() {
             commands::search::stop_watching_vault,
             commands::search::index_file,
             commands::preview::extract_toc_rust,
+            commands::preview::count_words,
             commands::preview::preview_binary,
             commands::preview::export_note_html,
             commands::image::paste_image,
