@@ -38,14 +38,6 @@ export async function appInvoke<T>(command: string, args?: Record<string, unknow
     case "search_vault": { const q = String(args?.query ?? "").toLowerCase(); return Object.entries(mockStore).filter(([,c]) => c.toLowerCase().includes(q)).map(([p,c]) => ({ path: p, title: p.replace(/\.md$/,""), snippet: c.slice(0,100), score: 1 })) as T; }
     case "get_backlinks_for": case "get_forward_links_for": return [] as T;
     case "get_all_tags": return [] as T;
-    case "render_markdown": {
-      const source = String(args?.source ?? "");
-      const { marked } = await import("marked");
-      const DOMPurify = (await import("dompurify")).default;
-      const processed = source.replace(/==([^=]+)==/g, (_m: string, text: string) => "<mark>" + text + "</mark>").replace(/\+\+([^+]+)\+\+/g, (_m: string, text: string) => "<u>" + text + "</u>");
-      const html = marked.parse(processed, { breaks: true, gfm: true }) as string;
-      return DOMPurify.sanitize(html, { ALLOWED_TAGS: ["h1","h2","h3","h4","h5","h6","p","br","strong","em","del","u","mark","ul","ol","li","a","img","code","pre","blockquote","table","thead","tbody","tr","th","td","hr","button","span"], ALLOWED_ATTR: ["href","src","alt","title","class","data-wiki-link","style"] }) as T;
-    }
     case "preview_binary": return { type: "unsupported", sheets: [], text: "", slides: [], message: "" } as T;
     case "rename_entry": {
       const old = String(args?.oldPath ?? "");
@@ -70,8 +62,6 @@ export async function appInvoke<T>(command: string, args?: Record<string, unknow
       return nextPath as T;
     }
     case "paste_image": { const name = "image_" + Date.now() + ".png"; mockStore[name] = "[binary]"; return name as T; }
-    case "apply_md_format": { const text = String(args?.text ?? ""); const start = Number(args?.start ?? 0); const end = Number(args?.end ?? 0); const sel = text.slice(start, end); return { content: text.slice(0,start)+"**"+sel+"**"+text.slice(end), cursorStart: start+2, cursorEnd: end+2 } as T; }
-    case "split_content_blocks": return String(args?.content ?? "").split("\n") as T;
     case "extract_toc_rust": { const items: { level: number; text: string }[] = []; const re = /^(#{1,3})\s+(.+)$/gm; let m; while ((m = re.exec(String(args?.content ?? ""))) !== null) items.push({ level: m[1].length, text: m[2].trim() }); return items as T; }
     case "export_note_html": return "<html><body><h1>Mock</h1></body></html>" as T;
     case "list_versions": return [] as T;
@@ -98,7 +88,6 @@ export async function appInvoke<T>(command: string, args?: Record<string, unknow
       }
       return nextPath as T;
     }
-    case "extract_file_text": return String(args?.text ?? "") as T;
     default: throw new Error("Unknown mock command: " + command);
   }
 }
