@@ -1,6 +1,7 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
+import { FolderOpen, Vault } from "lucide-react";
 import { ToastProvider } from "./components/Toast";
 import { AppProvider, useAppContext } from "./contexts/AppContext";
 import { VaultProvider, useVaultContext } from "./contexts/VaultContext";
@@ -20,6 +21,74 @@ const isDesktop = isTauri();
 function AppInner() {
   const app = useAppContext();
   const vault = useVaultContext();
+  const [creating, setCreating] = useState(false);
+
+  const handlePickVault = useCallback(async () => {
+    setCreating(true);
+    try {
+      const path = await app.chooseVaultFolder();
+      if (path) {
+        const name = path.split(/[/\\]/).pop() || path;
+        app.addVault(name, path);
+        app.setActiveVault(path);
+      }
+    } catch { /* user cancelled */ }
+    setCreating(false);
+  }, [app]);
+
+  // Loading state while settings are being read
+  if (!app.settingsLoaded) {
+    return (
+      <ToastProvider position={app.toastPosition}>
+        <main className={`obsidian-shell theme-${app.theme}`} lang={app.language}>
+          <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+            <span style={{ color: "var(--nord3)", fontSize: 14 }}>{app.t.welcomeStatus}</span>
+          </div>
+        </main>
+      </ToastProvider>
+    );
+  }
+
+  // No vault selected — show vault picker
+  if (!app.activeVault) {
+    return (
+      <ToastProvider position={app.toastPosition}>
+        <main className={`obsidian-shell theme-${app.theme}`} lang={app.language}>
+          <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16 }}>
+            <Vault size={48} style={{ color: "var(--nord3)", opacity: 0.5 }} />
+            <h2 style={{ color: "var(--nord4)", margin: 0, fontSize: 20, fontWeight: 500 }}>{app.t.welcomeNoVault}</h2>
+            <button
+              onClick={handlePickVault}
+              disabled={creating}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "10px 24px", borderRadius: 8,
+                border: "1px solid rgba(136,192,208,0.4)",
+                background: "rgba(136,192,208,0.12)",
+                color: "var(--nord8)", cursor: "pointer",
+                fontSize: 14, fontWeight: 600,
+              }}
+            >
+              <FolderOpen size={18} />
+              {creating ? app.t.creatingVault : app.t.selectVault}
+            </button>
+            {app.vaults.length > 0 && (
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ color: "var(--nord3)", fontSize: 12 }}>最近使用：</span>
+                {app.vaults.map(v => (
+                  <button key={v.path} onClick={() => app.setActiveVault(v.path)}
+                    style={{ background: "transparent", border: "none", color: "var(--nord4)", cursor: "pointer", fontSize: 13, padding: "4px 8px", borderRadius: 4 }}
+                  >
+                    {v.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
+      </ToastProvider>
+    );
+  }
 
   useEffect(() => {
     const id = "custom-theme-css";

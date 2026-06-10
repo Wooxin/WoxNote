@@ -2,7 +2,7 @@
 name = "woxnote"
 version = "0.2.4"
 description = "A Tauri App"
-authors = ["you"]
+authors = ["wooxin"]
 edition = "2021"
 
 [lib]
