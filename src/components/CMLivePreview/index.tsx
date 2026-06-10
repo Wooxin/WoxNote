@@ -276,54 +276,31 @@ export function CMLivePreview({
       const scrollToHeading = (text: string) => {
         const v = viewRef.current;
         if (!v) return;
-        const tree = syntaxTree(v.state);
-        let found = false;
-        tree.iterate({
-          enter(ref) {
-            if (found) return false;
-            if (ref.node.name.includes("Heading")) {
-              for (const c of childrenOf(ref.node)) {
-                if (c.name === "HeadingText") {
-                  const nodeText = v.state.doc.sliceString(c.from, c.to).trim();
-                  if (nodeText === text || nodeText.includes(text)) {
-                    v.dispatch({
-                      effects: EditorView.scrollIntoView(ref.node.from, { y: "start", yMargin: 24 }),
-                      selection: { anchor: ref.node.from },
-                    });
-                    found = true;
-                    return false;
-                  }
-                }
-              }
-              // Fallback: check the raw heading line
-              if (!found) {
-                const line = v.state.doc.lineAt(ref.node.from);
-                const lineText = line.text.replace(/^#+\s*/, "").trim();
-                if (lineText === text || lineText.includes(text)) {
-                  v.dispatch({
-                    effects: EditorView.scrollIntoView(ref.node.from, { y: "start", yMargin: 24 }),
-                    selection: { anchor: ref.node.from },
-                  });
-                  found = true;
-                  return false;
-                }
-              }
-            }
-          },
-        });
-        // Final fallback: full-text search
-        if (!found) {
-          const docText = v.state.doc.toString();
-          const idx = docText.indexOf(text);
-          if (idx >= 0) {
-            const posLine = v.state.doc.lineAt(idx);
-            if (/^#{1,6}\s/.test(posLine.text)) {
-              v.dispatch({
-                effects: EditorView.scrollIntoView(posLine.from, { y: "start", yMargin: 24 }),
-                selection: { anchor: posLine.from },
-              });
-            }
-          }
+
+        const scrollTo = (pos: number) => {
+          v.dispatch({
+            effects: EditorView.scrollIntoView(pos, { y: "start", yMargin: 24 }),
+            selection: { anchor: pos },
+          });
+        };
+
+        const doc = v.state.doc;
+        // First pass: exact match heading text
+        for (let i = 1; i <= doc.lines; i++) {
+          const line = doc.line(i);
+          const m = line.text.match(/^#{1,6}\s+(.+)$/);
+          if (m && m[1].trim() === text) { scrollTo(line.from); return; }
+        }
+        // Second pass: substring match
+        for (let i = 1; i <= doc.lines; i++) {
+          const line = doc.line(i);
+          const m = line.text.match(/^#{1,6}\s+(.+)$/);
+          if (m && m[1].trim().includes(text)) { scrollTo(line.from); return; }
+        }
+        // Third pass: full-text search in any heading
+        for (let i = 1; i <= doc.lines; i++) {
+          const line = doc.line(i);
+          if (/^#{1,6}\s/.test(line.text) && line.text.includes(text)) { scrollTo(line.from); return; }
         }
       };
       onScrollToHeading(scrollToHeading);

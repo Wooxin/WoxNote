@@ -8,7 +8,9 @@ export const cmTheme = EditorView.theme({
   },
   ".cm-content": {
     fontFamily: "var(--ui-font, HarmonyOS Sans, sans-serif)",
-    padding: "32px calc((100% - var(--editor-content-width, 900px)) / 2)",
+    maxWidth: "var(--editor-content-width, 900px)",
+    margin: "32px auto 0 auto",
+    padding: "0 6px",
     fontSize: "var(--editor-font-size, 16px)",
     lineHeight: "1.7",
     caretColor: "var(--cm-cursor-color, #d8dee9)",
