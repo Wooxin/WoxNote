@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { EditorView, keymap, highlightActiveLine, ViewUpdate, drawSelection } from "@codemirror/view";
 import { EditorState, type Extension } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
-import { syntaxHighlighting, syntaxTree } from "@codemirror/language";
+import { syntaxHighlighting } from "@codemirror/language";
 
 // Module-level scroll-to-heading — accessible from any component
 let _scrollToHeading: ((text: string) => void) | null = null;
@@ -14,7 +14,7 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 import { search, searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 
 import { STYLE_ID, CSS, woxHighlightStyle } from "./styles";
-import { setEditorFocused, isEditorFocused, focusEffect, previewField, setVaultPath, childrenOf } from "./decorations";
+import { setEditorFocused, isEditorFocused, focusEffect, previewField, setVaultPath } from "./decorations";
 import { cmTheme, darkTheme } from "./theme";
 import { appInvoke } from "../../bridge";
 
