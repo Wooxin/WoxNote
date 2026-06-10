@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { BookOpen, Columns2, Command, Languages, Moon, Plus, RefreshCw, Settings, Sun, Vault } from "lucide-react";
+import { BookOpen, Columns2, Command, FolderOpen, Languages, Moon, Plus, RefreshCw, Settings, Sun, Vault } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 
@@ -10,6 +10,16 @@ export function Ribbon() {
   const vaultBtnRef = useRef<HTMLButtonElement>(null);
 
   const activeVaultName = app.vaults.find((v) => v.path === app.activeVault)?.name || app.t.vault;
+
+  const handleOpenVault = async () => {
+    const path = await app.chooseVaultFolder();
+    if (path) {
+      const name = path.split(/[/\\]/).pop() || path;
+      app.addVault(name, path);
+      app.setActiveVault(path);
+    }
+    setVaultMenuOpen(false);
+  };
 
   return (
     <aside className="ribbon">
@@ -48,6 +58,11 @@ export function Ribbon() {
               {v.path === app.activeVault && <span className="vault-switcher-check">&#x2713;</span>}
             </button>
           ))}
+          <div className="vault-switcher-sep" />
+          <button className="vault-switcher-item" onClick={handleOpenVault}>
+            <FolderOpen size={14} />
+            <span>{app.t.openVault}</span>
+          </button>
         </div>
       )}
 

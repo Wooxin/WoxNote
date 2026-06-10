@@ -2539,4 +2539,6 @@ textarea/* === Markdown Live Editor === */
 .theme-light .vault-switcher-dropdown{background:#fff;border-color:#cbd4dd;box-shadow:0 12px 40px rgba(0,0,0,.1)}
 .theme-light .vault-switcher-item{color:#3d4855}
 .theme-light .vault-switcher-item:hover,.vault-switcher-item.active{color:#10202d;background:#edf1f5}
+.vault-switcher-sep{height:1px;background:rgba(255,255,255,0.08);margin:4px 6px}
+.theme-light .vault-switcher-sep{background:rgba(0,0,0,0.08)}
 

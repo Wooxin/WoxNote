@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { FolderOpen, Vault } from "lucide-react";
 import { ToastProvider } from "./components/Toast";
@@ -11,6 +12,7 @@ import { FileSidebar } from "./components/FileSidebar";
 import { MarkdownLiveEditor } from "./components/MarkdownLiveEditor";
 import { ContextSidebar } from "./components/ContextSidebar";
 import { ContextMenu } from "./components/ContextMenu";
+import { appInvoke } from "./bridge";
 import "./App.css";
 
 const CommandPalette = lazy(() => import("./components/CommandPalette").then(m => ({ default: m.CommandPalette })));
@@ -104,6 +106,29 @@ function AppInner() {
   const handleOpenInSystem = (path: string) => {
     if (isDesktop) void openPath(path);
   };
+
+  // ── Drag & drop: drop a folder to add as vault ──
+  useEffect(() => {
+    if (!isDesktop) return;
+    const unlisten = getCurrentWindow().onDragDropEvent((event) => {
+      if (event.payload.type === "drop") {
+        for (const path of event.payload.paths) {
+          void (async () => {
+            try {
+              const list = await appInvoke("list_entries", { root: path });
+              if (Array.isArray(list)) {
+                const name = path.split(/[/\\]/).pop() || path;
+                app.addVault(name, path);
+                app.setActiveVault(path);
+              }
+            } catch { /* not a valid vault directory */ }
+          })();
+          break; // Only process first dropped item
+        }
+      }
+    });
+    return () => { unlisten.then(fn => fn()); };
+  }, [app]);
 
   // ── Conditional rendering ──
 
