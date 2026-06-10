@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -14,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -25,7 +31,7 @@ jobs:
       - name: Build Tauri (Windows)
         run: npm run tauri build
 
-      - name: Upload installer (MSI)
+      - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
