@@ -21,19 +21,12 @@ mod commands;
 // ── Shared helpers ─────────────────────────────────────────
 
 pub fn app_data_dir(_app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let path = if cfg!(debug_assertions) {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .join("WoxNoteData")
-    } else {
-        // Portable: store data next to the executable
-        std::env::current_exe()
-            .map_err(|e| e.to_string())?
-            .parent()
-            .map(|p| p.join("WoxNoteData"))
-            .unwrap_or_else(|| PathBuf::from("WoxNoteData"))
-    };
+    // Portable: always store data next to the executable
+    let path = std::env::current_exe()
+        .map_err(|e| e.to_string())?
+        .parent()
+        .map(|p| p.join("WoxNoteData"))
+        .unwrap_or_else(|| PathBuf::from("WoxNoteData"));
     fs::create_dir_all(&path).map_err(|e| e.to_string())?;
     Ok(path)
 }
