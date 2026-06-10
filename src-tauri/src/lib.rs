@@ -27,16 +27,12 @@ pub fn app_data_dir(_app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
             .unwrap()
             .join("WoxNoteData")
     } else {
-        #[cfg(target_os = "windows")]
-        {
-            let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".into());
-            PathBuf::from(appdata).join("WoxNote")
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-            let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-            PathBuf::from(home).join(".woxnote")
-        }
+        // Portable: store data next to the executable
+        std::env::current_exe()
+            .map_err(|e| e.to_string())?
+            .parent()
+            .map(|p| p.join("WoxNoteData"))
+            .unwrap_or_else(|| PathBuf::from("WoxNoteData"))
     };
     fs::create_dir_all(&path).map_err(|e| e.to_string())?;
     Ok(path)
