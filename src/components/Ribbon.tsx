@@ -1,10 +1,15 @@
-import { BookOpen, Columns2, Command, Languages, Moon, Plus, RefreshCw, Settings, Sun } from "lucide-react";
+import { useRef, useState } from "react";
+import { BookOpen, Columns2, Command, Languages, Moon, Plus, RefreshCw, Settings, Sun, Vault } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 
 export function Ribbon() {
   const app = useAppContext();
   const vault = useVaultContext();
+  const [vaultMenuOpen, setVaultMenuOpen] = useState(false);
+  const vaultBtnRef = useRef<HTMLButtonElement>(null);
+
+  const activeVaultName = app.vaults.find((v) => v.path === app.activeVault)?.name || app.t.vault;
 
   return (
     <aside className="ribbon">
@@ -15,7 +20,36 @@ export function Ribbon() {
       <button className="ribbon-button active" title={app.t.fileTree}><BookOpen size={20} /><span>{app.t.fileTree}</span></button>
       <button className="ribbon-button" title={app.t.quickOpen} onClick={() => vault.setIsPaletteOpen(true)}><Command size={20} /><span>{app.t.quickOpen}</span></button>
       <button className="ribbon-button" title={app.t.newNote} onClick={() => void vault.createNote()}><Plus size={20} /><span>{app.t.newNote}</span></button>
-      <button className="ribbon-button" title={app.t.refreshVault} onClick={() => void vault.refreshEntries(app.vaultPath)}><RefreshCw size={20} /><span>{app.t.refreshVault}</span></button>
+      <button className="ribbon-button" title={app.t.refreshVault} onClick={() => void vault.refreshEntries(app.activeVault)}><RefreshCw size={20} /><span>{app.t.refreshVault}</span></button>
+
+      {/* Vault switcher — single button + dropdown */}
+      <button ref={vaultBtnRef} className="ribbon-button" title={app.t.vault}
+        onClick={() => setVaultMenuOpen((v) => !v)}>
+        <Vault size={18} />
+        <span>{activeVaultName}</span>
+      </button>
+
+      {vaultMenuOpen && (
+        <div className="vault-switcher-dropdown" style={{
+          position: "fixed",
+          left: (vaultBtnRef.current?.getBoundingClientRect().right ?? 48) + 4,
+          top: vaultBtnRef.current?.getBoundingClientRect().bottom ?? 0,
+          zIndex: 50,
+        }}>
+          {app.vaults.map((v) => (
+            <button key={v.path} className={`vault-switcher-item ${v.path === app.activeVault ? "active" : ""}`}
+              onClick={() => { app.setActiveVault(v.path); void vault.activateVault(v.path); setVaultMenuOpen(false); }}>
+              <Vault size={14} />
+              <span>{v.name}</span>
+              {v.path === app.activeVault && <span className="vault-switcher-check">&#x2713;</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Close dropdown on outside click */}
+      {vaultMenuOpen && <div className="context-menu-shield" style={{ zIndex: 49 }} onMouseDown={() => setVaultMenuOpen(false)} />}
+
       {app.showQuickSettings && (
         <>
           <button className="ribbon-button" title={app.t.theme} onClick={() => app.setTheme((c) => c === "dark" ? "light" : "dark")}>

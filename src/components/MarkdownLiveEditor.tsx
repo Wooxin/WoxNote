@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Columns3, FileCode, Minus, Table, X } from "lucide-react";
+import { Columns3, Copy, FileCode, Minus, Paintbrush, Scissors, Table, X, ClipboardPaste } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 import { BinaryPreview } from "./BinaryPreview";
@@ -17,10 +17,20 @@ const CODE_TEMPLATE = "````\ncode here\n````";
 const CALLOUT_TEMPLATE = `> **Note**
 > Callout content`;
 
+const PRESET_COLORS = [
+  { label: "Red", color: "#e53935" },
+  { label: "Orange", color: "#fb8c00" },
+  { label: "Green", color: "#43a047" },
+  { label: "Blue", color: "#1e88e5" },
+  { label: "Purple", color: "#8e24aa" },
+  { label: "Gray", color: "#757575" },
+];
+
 export function MarkdownLiveEditor() {
   const app = useAppContext();
   const vault = useVaultContext();
   const [editorMenu, setEditorMenu] = useState<{ x: number; y: number } | null>(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const scrollToHeadingRef = useRef<((text: string) => void) | null>(null);
   const [cursorLine, setCursorLine] = useState(1);
@@ -39,11 +49,59 @@ export function MarkdownLiveEditor() {
     vault.handleContentChange(vault.content ? vault.content + "\n\n" + template : template);
   }, [vault]);
 
+  const getSelectedText = useCallback((): string => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return "";
+    return sel.toString();
+  }, []);
+
+  const handleCopy = useCallback(async () => {
+    const text = getSelectedText();
+    if (text) {
+      try { await navigator.clipboard.writeText(text); } catch { document.execCommand("copy"); }
+    }
+    setEditorMenu(null);
+  }, [getSelectedText]);
+
+  const handleCut = useCallback(async () => {
+    const text = getSelectedText();
+    if (text) {
+      try { await navigator.clipboard.writeText(text); } catch { document.execCommand("cut"); }
+      vault.handleContentChange(vault.content.replace(text, ""));
+    }
+    setEditorMenu(null);
+  }, [getSelectedText, vault]);
+
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        const sel = getSelectedText();
+        if (sel) {
+          vault.handleContentChange(vault.content.replace(sel, text));
+        } else {
+          vault.handleContentChange(vault.content + "\n" + text);
+        }
+      }
+    } catch { /* clipboard read may fail */ }
+    setEditorMenu(null);
+  }, [getSelectedText, vault]);
+
+  const applyColor = useCallback((color: string) => {
+    const sel = getSelectedText();
+    if (sel) {
+      const wrapped = `<font color="${color}">${sel}</font>`;
+      vault.handleContentChange(vault.content.replace(sel, wrapped));
+    }
+    setEditorMenu(null);
+    setShowColorPicker(false);
+  }, [getSelectedText, vault]);
+
   const handlePasteImage = useCallback(async (dataUrl: string): Promise<string | null> => {
     try {
-      return await appInvoke<string>("paste_image", { root: app.vaultPath, dataUrl });
+      return await appInvoke<string>("paste_image", { root: app.activeVault, dataUrl });
     } catch { return null; }
-  }, [app.vaultPath]);
+  }, [app.activeVault]);
 
   const handleRenameFile = async (entry: typeof vault.selectedEntry, newName: string) => {
     if (!entry) return;
@@ -60,10 +118,14 @@ export function MarkdownLiveEditor() {
   };
 
   const menuItems = [
-    { icon: <Table size={15} />, label: app.t.insertTable, action: () => insertAtEnd(TABLE_TEMPLATE) },
-    { icon: <FileCode size={15} />, label: app.t.insertCodeBlock, action: () => insertAtEnd(CODE_TEMPLATE) },
-    { icon: <Columns3 size={15} />, label: app.t.insertCallout, action: () => insertAtEnd(CALLOUT_TEMPLATE) },
-    { icon: <Minus size={15} />, label: app.t.insertDivider, action: () => insertAtEnd("---") },
+    { icon: <Copy size={15} />, label: app.t.copy, action: handleCopy },
+    { icon: <Scissors size={15} />, label: app.t.cut, action: handleCut },
+    { icon: <ClipboardPaste size={15} />, label: app.t.paste, action: handlePaste },
+    { icon: <Paintbrush size={15} />, label: app.t.textColor, action: () => setShowColorPicker((v) => !v) },
+    { icon: <Table size={15} />, label: app.t.insertTable, action: () => { insertAtEnd(TABLE_TEMPLATE); setEditorMenu(null); } },
+    { icon: <FileCode size={15} />, label: app.t.insertCodeBlock, action: () => { insertAtEnd(CODE_TEMPLATE); setEditorMenu(null); } },
+    { icon: <Columns3 size={15} />, label: app.t.insertCallout, action: () => { insertAtEnd(CALLOUT_TEMPLATE); setEditorMenu(null); } },
+    { icon: <Minus size={15} />, label: app.t.insertDivider, action: () => { insertAtEnd("---"); setEditorMenu(null); } },
   ];
 
   return (
@@ -120,7 +182,7 @@ export function MarkdownLiveEditor() {
             onClickWikiLink={(title) => vault.openLinkByTitle(title)} onClickTag={(tag) => vault.setGlobalSearch(tag)}
             onScrollToHeading={(fn) => { scrollToHeadingRef.current = fn; vault.setScrollToHeading(fn); }}
             onCursorChange={(line, col) => { setCursorLine(line); setCursorCol(col); }}
-            vaultPath={app.vaultPath}
+            vaultPath={app.activeVault}
           />
         )}
       </div>
@@ -136,11 +198,24 @@ export function MarkdownLiveEditor() {
       )}
 
       {editorMenu && (
-        <div className="context-menu-shield" onMouseDown={() => setEditorMenu(null)}>
+        <div className="context-menu-shield" onMouseDown={() => { setEditorMenu(null); setShowColorPicker(false); }}>
           <div className="file-context-menu editor-insert-menu" style={{ left: editorMenu.x, top: editorMenu.y }} onMouseDown={(e) => e.stopPropagation()}>
             {menuItems.map((item) => (
-              <button key={item.label} onClick={() => { item.action(); setEditorMenu(null); }}>{item.icon}<span>{item.label}</span></button>
+              <button key={item.label} onClick={() => { item.action(); if (item.label !== app.t.textColor) setEditorMenu(null); }}>
+                {item.icon}<span>{item.label}</span>
+              </button>
             ))}
+            {showColorPicker && (
+              <div className="color-picker-submenu">
+                {PRESET_COLORS.map((c) => (
+                  <button key={c.color} onClick={() => applyColor(c.color)}
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 8px" }}>
+                    <span style={{ width: 16, height: 16, borderRadius: 3, background: c.color, display: "inline-block" }} />
+                    <span style={{ fontSize: 12 }}>{c.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

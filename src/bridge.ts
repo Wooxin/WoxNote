@@ -11,8 +11,8 @@ export async function appInvoke<T>(command: string, args?: Record<string, unknow
   }
 
   switch (command) {
-    case "startup_info": return { defaultPath: "D:\\Works\\MyProject\\WoxNote\\WoxNoteData\\Vaults\\Default", appDataPath: "D:\\Works\\MyProject\\WoxNote\\WoxNoteData", suggestions: [{ name: "App Workspace", path: "D:\\Works\\MyProject\\WoxNote\\WoxNoteData\\Vaults\\Default", kind: "local" }] } as T;
-    case "get_user_settings": return { vaultPath: "D:\\Works\\MyProject\\WoxNote\\WoxNoteData\\Vaults\\Default", theme: "dark", language: "zh", sidebarCollapsed: false, contentWidth: "900", uiFontSize: "14", contentFontSize: "15", shortcutPalette: "Ctrl+P", shortcutNewNote: "Ctrl+N", shortcutSave: "Ctrl+S", shortcutCloseTab: "Ctrl+W", uiFont: "HarmonyOS Sans", codeFont: "Cascadia Code", collapsedDirsJson: "[]" } as T;
+    case "startup_info": return { defaultPath: "", appDataPath: "", suggestions: [] } as T;
+    case "get_user_settings": return { vaultsJson: "[]", activeVault: "", theme: "dark", language: "zh", sidebarCollapsed: false, contentWidth: "900", uiFontSize: "14", contentFontSize: "15", shortcutPalette: "Ctrl+P", shortcutNewNote: "Ctrl+N", shortcutSave: "Ctrl+S", shortcutCloseTab: "Ctrl+W", uiFont: "HarmonyOS Sans", codeFont: "Cascadia Code", collapsedDirsJson: "[]" } as T;
     case "save_user_settings": case "ensure_vault": case "reindex_vault": case "start_watching_vault": case "stop_watching_vault": case "index_file": case "restore_version": return undefined as T;
     case "list_entries": return [...mockEntries] as T;
     case "read_text_file": return (mockStore[String(args?.relativePath ?? "")] ?? "") as T;

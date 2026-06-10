@@ -44,7 +44,7 @@
   --cm-activeLine-bg: rgba(216, 222, 233, 0.05);
   --cm-gutter-color: var(--nord3);
   --cm-cursor-color: var(--nord4);
-  --cm-selection-bg: rgba(94, 129, 172, 0.35);
+  --cm-selection-bg: rgba(94, 129, 172, 0.45);
   --cm-selectionMatch-bg: rgba(216, 222, 233, 0.06);
   --cm-searchMatch-bg: rgba(235, 203, 139, 0.35);
   --cm-searchMatchSel-bg: rgba(208, 135, 112, 0.45);
@@ -73,6 +73,16 @@
   line-height: 1.45;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Light mode font rendering — disable antialiasing that makes text gray on Windows */
+.theme-light {
+  -webkit-font-smoothing: auto;
+}
+.theme-light .cm-editor .cm-content,
+.theme-light .cm-editor .cm-line {
+  -webkit-font-smoothing: auto;
+  font-weight: 500;
 }
 
 
@@ -774,11 +784,20 @@ textarea/* === Markdown Live Editor === */
   color: #232b35;
   background: #f4f6f8;
 
+  /* Nord palette overrides for light mode */
+  --nord0: #ffffff;
+  --nord1: #f4f6f8;
+  --nord2: #e8ecf0;
+  --nord3: #c8d0d8;
+  --nord3-1: #8a96a4;
+  --nord4: #000000;
+  --nord5: #000000;
+
   /* Editor color overrides */
-  --cm-text: #1e2732;
-  --cm-heading: #1e2732;
-  --cm-bold: #1e2732;
-  --cm-italic: #1e2732;
+  --cm-text: #000000;
+  --cm-heading: #000000;
+  --cm-bold: #000000;
+  --cm-italic: #000000;
   --cm-code-bg: rgba(0,0,0,0.06);
   --cm-code-color: #d73a49;
   --cm-link: #0366d6;
@@ -793,7 +812,7 @@ textarea/* === Markdown Live Editor === */
   --cm-activeLine-bg: rgba(0,0,0,0.04);
   --cm-gutter-color: #9aa5b1;
   --cm-cursor-color: #1e2732;
-  --cm-selection-bg: #b4d5fe;
+  --cm-selection-bg: rgba(66, 133, 244, 0.32);
   --cm-selectionMatch-bg: rgba(0,0,0,0.06);
   --cm-searchMatch-bg: rgba(255,200,0,0.35);
   --cm-searchMatchSel-bg: rgba(255,170,0,0.5);
@@ -813,6 +832,94 @@ textarea/* === Markdown Live Editor === */
   --cm-callout-example-bg: rgba(213,0,249,0.08);
   --cm-callout-quote-bg: rgba(0,0,0,0.04);
   --cm-callout-success-bg: rgba(0,200,83,0.08);
+
+  /* CodeMirror editor overrides for hardcoded dark colors */
+  --cm-fenced-line-bg: rgba(0,0,0,0.04);
+  --cm-fenced-line-border: rgba(0,0,0,0.08);
+  --cm-fence-open-bg: rgba(0,0,0,0.03);
+  --cm-fence-close-bg: rgba(0,0,0,0.03);
+  --cm-fence-mark-color: rgba(0,0,0,0.2);
+  --cm-code-info-bg: rgba(0,0,0,0.06);
+  --cm-code-info-color: #3d4855;
+  --cm-code-info-border: rgba(0,0,0,0.1);
+  --cm-code-info-hover-bg: rgba(0,0,0,0.1);
+  --cm-code-info-hover-color: #1a2733;
+  --cm-table-border: rgba(0,0,0,0.12);
+  --cm-table-header-bg: rgba(0,0,0,0.04);
+  --cm-table-even-bg: rgba(0,0,0,0.02);
+  --cm-table-cell-border: rgba(0,0,0,0.06);
+  --cm-blockquote-bg: rgba(0,0,0,0.03);
+  --cm-blockquote-border: rgba(0,0,0,0.15);
+  --cm-hr-color: rgba(0,0,0,0.1);
+  --cm-list-bullet-color: #5e6a78;
+  --cm-task-marker-color: #5b8def;
+}
+
+/* CodeMirror light-theme overrides for hardcoded dark colors */
+.theme-light .cm-editor .cm-content,
+.theme-light .cm-editor .cm-line {
+  color: #000000 !important;
+}
+.theme-light .cm-editor .cm-md-fenced-line {
+  background: var(--cm-fenced-line-bg) !important;
+  border-left-color: var(--cm-fenced-line-border) !important;
+  border-right-color: var(--cm-fenced-line-border) !important;
+}
+.theme-light .cm-editor .cm-md-fence-open {
+  background: var(--cm-fence-open-bg) !important;
+  border-color: var(--cm-fenced-line-border) !important;
+  border-top-color: var(--cm-fenced-line-border) !important;
+}
+.theme-light .cm-editor .cm-md-fence-close {
+  background: var(--cm-fence-close-bg) !important;
+  border-color: var(--cm-fenced-line-border) !important;
+  border-bottom-color: var(--cm-fenced-line-border) !important;
+}
+.theme-light .cm-editor .cm-md-fence-mark {
+  color: var(--cm-fence-mark-color) !important;
+}
+.theme-light .cm-editor .cm-md-code-info {
+  background: var(--cm-code-info-bg) !important;
+  color: var(--cm-code-info-color) !important;
+  border-color: var(--cm-code-info-border) !important;
+}
+.theme-light .cm-editor .cm-md-code-info:hover {
+  background: var(--cm-code-info-hover-bg) !important;
+  color: var(--cm-code-info-hover-color) !important;
+}
+.theme-light .cm-editor .cm-md-code-info-copied {
+  color: #28a745 !important;
+}
+.theme-light .cm-editor .cm-md-table {
+  border-color: var(--cm-table-border) !important;
+}
+.theme-light .cm-editor .cm-md-table thead th {
+  background: var(--cm-table-header-bg) !important;
+  color: var(--cm-text) !important;
+  border-bottom-color: #88C0D0 !important;
+  border-right-color: var(--cm-table-border) !important;
+}
+.theme-light .cm-editor .cm-md-table tbody td {
+  border-bottom-color: var(--cm-table-cell-border) !important;
+  border-right-color: var(--cm-table-cell-border) !important;
+  color: var(--cm-text) !important;
+}
+.theme-light .cm-editor .cm-md-table tbody tr:nth-child(even) td {
+  background: var(--cm-table-even-bg) !important;
+}
+.theme-light .cm-editor .cm-md-blockquote {
+  background: var(--cm-blockquote-bg) !important;
+  box-shadow: inset 3px 0 0 var(--cm-blockquote-border) !important;
+  color: #4a5568 !important;
+}
+.theme-light .cm-editor .cm-md-hr::after {
+  background: var(--cm-hr-color) !important;
+}
+.theme-light .cm-editor .cm-md-list-bullet {
+  color: var(--cm-list-bullet-color) !important;
+}
+.theme-light .cm-editor .cm-md-task-marker {
+  color: var(--cm-task-marker-color) !important;
 }
 
 .theme-light .mlb-container {
@@ -1704,6 +1811,40 @@ textarea/* === Markdown Live Editor === */
   color: #10202d;
 }
 
+/* Color picker submenu in editor context menu */
+.color-picker-submenu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  border-top: 1px solid rgba(216,222,233,0.1);
+  margin-top: 4px;
+}
+.color-picker-submenu button {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: auto !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  color: var(--nord4) !important;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.color-picker-submenu button:hover {
+  background: var(--nord3) !important;
+}
+.theme-light .color-picker-submenu {
+  border-top-color: rgba(0,0,0,0.08);
+}
+.theme-light .color-picker-submenu button {
+  color: #3d4855 !important;
+}
+.theme-light .color-picker-submenu button:hover {
+  background: #edf1f5 !important;
+}
+
 .confirm-dialog {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
@@ -2389,4 +2530,13 @@ textarea/* === Markdown Live Editor === */
 .toast-close:hover{color: var(--nord4)}
 .theme-light .toast{background:#fff;border-color:#d7dee6;color:#26313d;box-shadow:0 8px 32px rgba(0,0,0,.08)}
 
+
+
+.vault-switcher-dropdown{background:#20252c;border:1px solid #414b58;border-radius:8px;padding:4px;min-width:180px;box-shadow:0 12px 40px rgba(0,0,0,.3);max-height:260px;overflow-y:auto}
+.vault-switcher-item{display:flex;align-items:center;gap:8px;width:100%;height:30px;border:none;border-radius:5px;background:transparent;color:#b6c0ca;cursor:pointer;padding:0 8px;font-size:12px;text-align:left}
+.vault-switcher-item:hover,.vault-switcher-item.active{color:#f2f5f7;background:#313944}
+.vault-switcher-check{margin-left:auto;color:#8cc8ff;font-weight:700}
+.theme-light .vault-switcher-dropdown{background:#fff;border-color:#cbd4dd;box-shadow:0 12px 40px rgba(0,0,0,.1)}
+.theme-light .vault-switcher-item{color:#3d4855}
+.theme-light .vault-switcher-item:hover,.vault-switcher-item.active{color:#10202d;background:#edf1f5}
 

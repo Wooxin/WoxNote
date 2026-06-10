@@ -59,8 +59,8 @@ export type VaultContextType = {
 const VaultCtx = createContext<VaultContextType | null>(null);
 
 export function VaultProvider({ children }: { children: React.ReactNode }) {
-  const { vaultPath, t, collapsedDirs, setCollapsedDirs } = useAppContext();
-  const vault = useVault(vaultPath, t, collapsedDirs, setCollapsedDirs);
+  const { activeVault, t, collapsedDirs, setCollapsedDirs, openTabs, setOpenTabs, selectedPath, setSelectedPath } = useAppContext();
+  const vault = useVault(activeVault, t, collapsedDirs, setCollapsedDirs, openTabs, setOpenTabs, selectedPath, setSelectedPath);
   const [scrollToHeading, setScrollToHeading] = useState<((text: string) => void) | null>(null);
 
   return (

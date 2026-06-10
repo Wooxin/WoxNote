@@ -3,13 +3,15 @@ import type { Language, StartupInfo, ThemeMode, UserSettings } from "../types";
 import { appInvoke } from "../bridge";
 
 export function useSettings() {
-  const [vaultPath, setVaultPathState] = useState("");
+  const [vaults, setVaultsState] = useState<{ name: string; path: string }[]>([]);
+  const [activeVault, setActiveVaultState] = useState("");
   const [theme, setTheme] = useState<ThemeMode>("dark");
   const [language, setLanguage] = useState<Language>("zh");
   const [showQuickSettings, setShowQuickSettings] = useState(false);
   const [enableKeyboardShortcuts, setEnableKeyboardShortcuts] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsedState] = useState(false);
   const [windowMaximized, setWindowMaximized] = useState(false);
+  const windowMaximizedRef = useRef(windowMaximized); windowMaximizedRef.current = windowMaximized;
   const [vaultInitialized, setVaultInitialized] = useState(false);
   const [contentWidth, setContentWidth] = useState("900");
   const [fontSizeGlobal, setFontSizeGlobal] = useState(true);
@@ -24,13 +26,14 @@ export function useSettings() {
   const [uiFont, setUiFont] = useState("HarmonyOS Sans");
   const [codeFont, setCodeFont] = useState("Cascadia Code");
   const [collapsedDirs, setCollapsedDirsState] = useState<Set<string>>(new Set());
-  const [lastOpenedPath, setLastOpenedPathState] = useState("");
+  const [openTabs, setOpenTabsState] = useState<string[]>([]);
+  const [selectedPath, setSelectedPathState] = useState("");
   const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [startup, setStartup] = useState<StartupInfo | null>(null);
+  const [startup, _setStartup] = useState<StartupInfo | null>(null);
 
-  // Refs for latest values (used by flushSave and immediate saves)
-  const vaultPathRef = useRef(vaultPath);
-  vaultPathRef.current = vaultPath;
+  // Refs for latest values
+  const vaultsRef = useRef(vaults); vaultsRef.current = vaults;
+  const activeVaultRef = useRef(activeVault); activeVaultRef.current = activeVault;
   const themeRef = useRef(theme);
   themeRef.current = theme;
   const languageRef = useRef(language);
@@ -69,17 +72,18 @@ export function useSettings() {
   codeFontRef.current = codeFont;
   const collapsedDirsRef = useRef(collapsedDirs);
   collapsedDirsRef.current = collapsedDirs;
-  const lastOpenedPathRef = useRef(lastOpenedPath);
-  lastOpenedPathRef.current = lastOpenedPath;
-
+  const openTabsRef = useRef(openTabs); openTabsRef.current = openTabs;
+  const selectedPathRef = useRef(selectedPath); selectedPathRef.current = selectedPath;
   const doSave = useCallback(async (overrides?: Record<string, unknown>) => {
     const s = {
-      vaultPath: vaultPathRef.current,
+      vaultsJson: JSON.stringify(vaultsRef.current),
+      activeVault: activeVaultRef.current,
       theme: themeRef.current,
       language: languageRef.current,
       showQuickSettings: showQuickSettingsRef.current,
       enableKeyboardShortcuts: enableShortcutsRef.current,
       sidebarCollapsed: sidebarCollapsedRef.current,
+      windowMaximized: windowMaximizedRef.current,
       vaultInitialized: vaultInitializedRef.current,
       contentWidth: contentWidthRef.current,
       fontSizeGlobal: fontSizeGlobalRef.current,
@@ -94,22 +98,27 @@ export function useSettings() {
       uiFont: uiFontRef.current,
       codeFont: codeFontRef.current,
       collapsedDirsJson: JSON.stringify(Array.from(collapsedDirsRef.current)),
-      lastOpenedPath: lastOpenedPathRef.current,
+      openTabsJson: JSON.stringify(openTabsRef.current),
+      selectedPath: selectedPathRef.current,
       ...overrides,
     };
     try {
       await appInvoke("save_user_settings", { settings: s });
     } catch (err) {
-      console.warn("Failed to save settings:", err);
+      console.error("WoxNote: failed to save settings", err);
     }
   }, []);
   // Load settings on mount
   useEffect(() => {
     void (async () => {
       const info = await appInvoke<StartupInfo>("startup_info");
-      setStartup(info);
+      _setStartup(info);
       const settings = await appInvoke<UserSettings>("get_user_settings");
-      setVaultPathState(settings.vaultPath || info.defaultPath);
+      try {
+        const parsed = JSON.parse(settings.vaultsJson || "[]") as { name: string; path: string }[];
+        setVaultsState(parsed);
+      } catch { setVaultsState([]); }
+      setActiveVaultState(settings.activeVault || "");
       setTheme(settings.theme || "dark");
       setLanguage(settings.language || "zh");
       setShowQuickSettings(settings.showQuickSettings ?? false);
@@ -129,29 +138,37 @@ export function useSettings() {
       setToastPosition(settings.toastPosition || "bottom-left");
       setUiFont(settings.uiFont || "HarmonyOS Sans");
       setCodeFont(settings.codeFont || "Cascadia Code");
-      setLastOpenedPathState(settings.lastOpenedPath || "");
       try {
         const dirs = JSON.parse(settings.collapsedDirsJson || "[]") as string[];
         setCollapsedDirsState(new Set(dirs));
       } catch {
         setCollapsedDirsState(new Set());
       }
+      try {
+        const tabs = JSON.parse(settings.openTabsJson || "[]") as string[];
+        setOpenTabsState(tabs);
+      } catch { setOpenTabsState([]); }
+      setSelectedPathState(settings.selectedPath || "");
       setSettingsLoaded(true);
     })();
   }, []);
 
-  // Debounced save
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Debounced save (exclude vaults/activeVault — addVault/removeVault handle their own save)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!settingsLoaded) return;
-    clearTimeout(saveTimer.current);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(doSave, 300);
-    return () => clearTimeout(saveTimer.current);
-  }, [vaultPath, theme, language, showQuickSettings, enableKeyboardShortcuts, sidebarCollapsed, vaultInitialized, contentWidth, fontSizeGlobal, uiFontSize, contentFontSize, shortcutPalette, shortcutNewNote, shortcutSave, shortcutCloseTab, themeFile, toastPosition, uiFont, codeFont, collapsedDirs, lastOpenedPath, settingsLoaded, doSave]);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [theme, language, showQuickSettings, enableKeyboardShortcuts, sidebarCollapsed, vaultInitialized, contentWidth, fontSizeGlobal, uiFontSize, contentFontSize, shortcutPalette, shortcutNewNote, shortcutSave, shortcutCloseTab, themeFile, toastPosition, uiFont, codeFont, collapsedDirs, settingsLoaded, doSave]);
 
-  // Flush on unload
+  // Flush on unload (synchronous via navigator.sendBeacon not possible, so we use sync XMLHttpRequest)
   useEffect(() => {
-    const handler = () => doSave();
+    const handler = () => {
+      // Use synchronous approach for Tauri - but since Tauri owns the window,
+      // the debounced save should already cover it. Add explicit flush here.
+      void doSave();
+    };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [doSave]);
@@ -165,11 +182,29 @@ export function useSettings() {
     return () => document.removeEventListener("visibilitychange", handler);
   }, [doSave]);
 
-  // setVaultPath: save immediately
-  const setVaultPath = useCallback((path: string) => {
-    setVaultPathState(path);
-    vaultPathRef.current = path;
-    queueMicrotask(() => doSave({ vaultPath: path }));
+  const setActiveVault = useCallback((path: string) => {
+    if (path === activeVaultRef.current) return;
+    setActiveVaultState(path);
+    activeVaultRef.current = path;
+    void doSave({ activeVault: path });
+  }, [doSave]);
+
+  const addVault = useCallback((name: string, path: string) => {
+    const next = [...vaultsRef.current, { name, path }];
+    setVaultsState(next);
+    vaultsRef.current = next;
+    void doSave({ vaultsJson: JSON.stringify(next) });
+  }, [doSave]);
+
+  const removeVault = useCallback((path: string) => {
+    const next = vaultsRef.current.filter(v => v.path !== path);
+    setVaultsState(next);
+    vaultsRef.current = next;
+    if (activeVaultRef.current === path) {
+      setActiveVaultState("");
+      activeVaultRef.current = "";
+    }
+    void doSave({ vaultsJson: JSON.stringify(next), activeVault: "" });
   }, [doSave]);
 
   // setSidebarCollapsed: supports callback form, saves immediately
@@ -192,16 +227,34 @@ export function useSettings() {
     });
   }, [doSave]);
 
-  const chooseVaultFolder = useCallback(async () => {
-    const selected = await appInvoke<string | null>("choose_vault_folder", {
-      current: vaultPath || startup?.defaultPath,
+  // setOpenTabs: supports callback form, saves immediately
+  const setOpenTabs = useCallback((val: string[] | ((prev: string[]) => string[])) => {
+    setOpenTabsState((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      openTabsRef.current = next;
+      queueMicrotask(() => doSave({ openTabsJson: JSON.stringify(next) }));
+      return next;
     });
-    if (selected) setVaultPath(selected);
+  }, [doSave]);
+
+  // setSelectedPath: supports callback form, saves immediately
+  const setSelectedPath = useCallback((val: string | ((prev: string) => string)) => {
+    setSelectedPathState((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      selectedPathRef.current = next;
+      queueMicrotask(() => doSave({ selectedPath: next }));
+      return next;
+    });
+  }, [doSave]);
+
+  const chooseVaultFolder = useCallback(async (current?: string) => {
+    const selected = await appInvoke<string | null>("choose_vault_folder", { current });
     return selected;
-  }, [startup?.defaultPath, vaultPath, setVaultPath]);
+  }, []);
 
   return {
-    vaultPath, setVaultPath,
+    vaults, addVault, removeVault,
+    activeVault, setActiveVault,
     theme, setTheme,
     language, setLanguage,
     showQuickSettings, setShowQuickSettings,
@@ -222,8 +275,9 @@ export function useSettings() {
     uiFont, setUiFont,
     codeFont, setCodeFont,
     collapsedDirs, setCollapsedDirs,
+    openTabs, setOpenTabs,
+    selectedPath, setSelectedPath,
     settingsLoaded, startup,
-    lastOpenedPath, setLastOpenedPath: setLastOpenedPathState,
     chooseVaultFolder,
   };
 }

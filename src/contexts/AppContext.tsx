@@ -1,12 +1,10 @@
 import React, { createContext, useContext } from "react";
-import type { StartupInfo } from "../types";
 import type { Messages } from "../i18n";
 import { messages } from "../i18n";
 import { useSettings } from "../hooks/useSettings";
 
 export type AppContextType = ReturnType<typeof useSettings> & {
   t: Messages;
-  startup: StartupInfo | null;
 };
 
 const AppCtx = createContext<AppContextType | null>(null);
@@ -16,7 +14,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const t = messages[settings.language];
 
   return (
-    <AppCtx.Provider value={{ ...settings, t, startup: settings.startup }}>
+    <AppCtx.Provider value={{ ...settings, t }}>
       {children}
     </AppCtx.Provider>
   );

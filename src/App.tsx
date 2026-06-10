@@ -38,44 +38,40 @@ function AppInner() {
   }, [app.themeFile]);
 
   useEffect(() => {
-    if (app.settingsLoaded && app.vaultPath) {
-      vault.activateVault(app.vaultPath).then((entries) => {
-        // Restore last opened note using the fresh entries list
-        if (app.lastOpenedPath && entries) {
-          const entry = entries.find((e) => e.path === app.lastOpenedPath);
-          if (entry) void vault.handleSelectFile(entry);
-        }
-      });
+    if (app.settingsLoaded && app.activeVault) {
+      void vault.activateVault(app.activeVault);
     }
-  }, [app.settingsLoaded, app.vaultPath]);
+  }, [app.settingsLoaded, app.activeVault]);
 
   useEffect(() => {
     if (vault.entries.length === 0) return;
     const dirPaths = vault.entries.filter((e) => e.isDir).map((e) => e.path);
     if (dirPaths.length === 0) return;
 
-    if (!app.vaultInitialized) {
-      // First launch: collapse all directories
-      app.setCollapsedDirs(new Set(dirPaths));
-      app.setVaultInitialized(true);
-    } else {
-      // Subsequent launches / refreshes: collapse only NEW directories
-      // (don't touch directories the user has already expanded)
-      const next = new Set(app.collapsedDirs);
-      let changed = false;
-      for (const dir of dirPaths) {
-        if (!next.has(dir)) { next.add(dir); changed = true; }
-      }
-      if (changed) app.setCollapsedDirs(next);
-    }
-  }, [app.vaultInitialized, vault.entries]);
+    const next = new Set(app.collapsedDirs);
+    let changed = false;
 
-  // Persist last opened note
-  useEffect(() => {
-    if (vault.selectedPath && vault.selectedPath !== app.lastOpenedPath) {
-      app.setLastOpenedPath(vault.selectedPath);
+    // Collapse any NEW directories that weren't in the set before
+    for (const dir of dirPaths) {
+      if (!next.has(dir)) { next.add(dir); changed = true; }
     }
-  }, [vault.selectedPath]);
+
+    // Auto-expand parent directories to reveal the currently selected note
+    if (vault.selectedPath) {
+      const parts = vault.selectedPath.split("/");
+      for (let i = 1; i < parts.length; i++) {
+        const dirPath = parts.slice(0, i).join("/");
+        if (next.has(dirPath)) { next.delete(dirPath); changed = true; }
+      }
+    }
+
+    if (changed) {
+      app.setCollapsedDirs(next);
+      if (!app.vaultInitialized) app.setVaultInitialized(true);
+    } else if (!app.vaultInitialized) {
+      app.setVaultInitialized(true);
+    }
+  }, [app.vaultInitialized, vault.entries, vault.selectedPath]);
 
   useKeyboardShortcuts({
     enableKeyboardShortcuts: app.enableKeyboardShortcuts,
@@ -90,14 +86,6 @@ function AppInner() {
     shortcutNewNote: app.shortcutNewNote,
     shortcutCloseTab: app.shortcutCloseTab,
   });
-
-  const handleChooseVault = async () => {
-    const selected = await app.chooseVaultFolder();
-    if (selected) {
-      app.setVaultPath(selected);
-      await vault.activateVault(selected);
-    }
-  };
 
   const handleOpenInSystem = (path: string) => {
     if (isDesktop) void openPath(path);
@@ -129,10 +117,7 @@ function AppInner() {
 
       {vault.isSettingsOpen && (
         <Suspense fallback={null}>
-          <SettingsPanel
-            onActivateVault={(path) => void vault.activateVault(path)}
-            onChooseVault={() => void handleChooseVault()}
-          />
+          <SettingsPanel />
         </Suspense>
       )}
     </main>

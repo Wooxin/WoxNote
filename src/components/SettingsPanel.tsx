@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, Edit3, Info, Moon, Palette, Settings, Sun, X } from "lucide-react";
+import { Check, Edit3, Info, Moon, Palette, Plus, Settings, Sun, X } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 
@@ -18,15 +18,15 @@ const CONTENT_SIZES = ["13","14","15","16","17","18","20","22"];
 
 type Tab = "general" | "appearance" | "editor" | "about";
 
-type Props = {
-  onActivateVault: (path: string) => void;
-  onChooseVault: () => void;
-};
+type Props = {};
 
-export function SettingsPanel({ onActivateVault, onChooseVault }: Props) {
+export function SettingsPanel(_props: Props) {
   const app = useAppContext();
   const vault = useVaultContext();
   const [tab, setTab] = useState<Tab>("general");
+  const [newVaultName, setNewVaultName] = useState("");
+  const [editingVaultIdx, setEditingVaultIdx] = useState<number | null>(null);
+  const [editingVaultName, setEditingVaultName] = useState("");
 
   const tabs: { id: Tab; icon: React.ReactNode; label: string }[] = [
     { id: "general", icon: <Settings size={17} />, label: app.t.settingsSync },
@@ -63,11 +63,40 @@ export function SettingsPanel({ onActivateVault, onChooseVault }: Props) {
               <section className="settings-section">
                 <h3>{app.t.vault}</h3>
                 <p className="settings-desc">{app.t.vaultFolderSync}</p>
+
+                {app.vaults.map((v, idx) => (
+                  <label key={v.path} className="setting-field">
+                    <div className="path-row">
+                      {editingVaultIdx === idx ? (
+                        <input autoFocus value={editingVaultName} onChange={(e) => setEditingVaultName(e.target.value)}
+                          onBlur={() => setEditingVaultIdx(null)}
+                          onKeyDown={(e) => { if (e.key === "Enter") setEditingVaultIdx(null); }}
+                          spellCheck={false} />
+                      ) : (
+                        <input value={v.name} readOnly onClick={() => { setEditingVaultIdx(idx); setEditingVaultName(v.name); }} spellCheck={false} />
+                      )}
+                      <button className="icon-button" title={app.t.openVault}
+                        onClick={() => { app.setActiveVault(v.path); void vault.activateVault(v.path); }}
+                      ><Check size={17} /></button>
+                      <button className="secondary-action" onClick={() => app.removeVault(v.path)}><X size={15} /></button>
+                    </div>
+                  </label>
+                ))}
+
                 <label className="setting-field">
                   <div className="path-row">
-                    <input value={app.vaultPath} readOnly spellCheck={false} />
-                    <button className="icon-button" title={app.t.openVault} onClick={() => onActivateVault(app.vaultPath)}><Check size={17} /></button>
-                    <button className="secondary-action" title={app.t.pickVaultFolder} onClick={onChooseVault}>{app.t.browseVault}</button>
+                    <input value={newVaultName} placeholder="Name" onChange={(e) => setNewVaultName(e.target.value)} spellCheck={false} style={{ maxWidth: 140 }} />
+                    <button className="icon-button" onClick={async () => {
+                      const path = await app.chooseVaultFolder();
+                      if (path) {
+                        if (app.vaults.some((v) => v.path === path)) return;
+                        const name = newVaultName.trim() || path.split(/[\\/]/).pop() || "Vault";
+                        app.addVault(name, path);
+                        setNewVaultName("");
+                        app.setActiveVault(path);
+                        void vault.activateVault(path);
+                      }
+                    }}><Plus size={17} /></button>
                   </div>
                 </label>
               </section>

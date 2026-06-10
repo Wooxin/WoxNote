@@ -9,15 +9,15 @@ export function ContextMenu() {
 
   const handleNewFolder = async (parentPath: string) => {
     try {
-      await appInvoke("create_folder", { root: app.vaultPath, dir: parentPath, title: "New Folder" });
-      await vault.refreshEntries(app.vaultPath);
+      await appInvoke("create_folder", { root: app.activeVault, dir: parentPath, title: "New Folder" });
+      await vault.refreshEntries(app.activeVault);
     } catch (e) { console.error("new_folder/note failed:", e); }
   };
 
   const handleNewNote = async (parentPath: string) => {
     try {
-      await appInvoke("create_note_in_dir", { root: app.vaultPath, dir: parentPath, title: app.t.untitled });
-      await vault.refreshEntries(app.vaultPath);
+      await appInvoke("create_note_in_dir", { root: app.activeVault, dir: parentPath, title: app.t.untitled });
+      await vault.refreshEntries(app.activeVault);
     } catch (e) { console.error("new_folder/note failed:", e); }
   };
 

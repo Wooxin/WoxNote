@@ -283,7 +283,23 @@ export function CMLivePreview({
             if (found) return false;
             if (ref.node.name.includes("Heading")) {
               for (const c of childrenOf(ref.node)) {
-                if (c.name === "HeadingText" && v.state.doc.sliceString(c.from, c.to).trim() === text) {
+                if (c.name === "HeadingText") {
+                  const nodeText = v.state.doc.sliceString(c.from, c.to).trim();
+                  if (nodeText === text || nodeText.includes(text)) {
+                    v.dispatch({
+                      effects: EditorView.scrollIntoView(ref.node.from, { y: "start", yMargin: 24 }),
+                      selection: { anchor: ref.node.from },
+                    });
+                    found = true;
+                    return false;
+                  }
+                }
+              }
+              // Fallback: check the raw heading line
+              if (!found) {
+                const line = v.state.doc.lineAt(ref.node.from);
+                const lineText = line.text.replace(/^#+\s*/, "").trim();
+                if (lineText === text || lineText.includes(text)) {
                   v.dispatch({
                     effects: EditorView.scrollIntoView(ref.node.from, { y: "start", yMargin: 24 }),
                     selection: { anchor: ref.node.from },
@@ -295,6 +311,20 @@ export function CMLivePreview({
             }
           },
         });
+        // Final fallback: full-text search
+        if (!found) {
+          const docText = v.state.doc.toString();
+          const idx = docText.indexOf(text);
+          if (idx >= 0) {
+            const posLine = v.state.doc.lineAt(idx);
+            if (/^#{1,6}\s/.test(posLine.text)) {
+              v.dispatch({
+                effects: EditorView.scrollIntoView(posLine.from, { y: "start", yMargin: 24 }),
+                selection: { anchor: posLine.from },
+              });
+            }
+          }
+        }
       };
       onScrollToHeading(scrollToHeading);
     }

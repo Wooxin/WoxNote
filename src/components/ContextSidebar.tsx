@@ -104,7 +104,7 @@ export function ContextSidebar({ onOpenInSystem }: Props) {
       </section>
 
       {vault.selectedEntry && (
-        <button className="system-open" onClick={() => onOpenInSystem(`${app.vaultPath}\\${vault.selectedEntry!.path.replace(/\//g, "\\")}`)}>
+        <button className="system-open" onClick={() => onOpenInSystem(`${app.activeVault}\\${vault.selectedEntry!.path.replace(/\//g, "\\")}`)}>
           <FileArchive size={16} />
           <span>{app.t.openInSystem}</span>
         </button>

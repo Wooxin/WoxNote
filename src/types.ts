@@ -39,8 +39,14 @@ export type ViewMode = "source" | "reading" | "split";
 export type ThemeMode = "dark" | "light";
 export type Language = "zh" | "en";
 
+export type VaultInfo = {
+  name: string;
+  path: string;
+};
+
 export type UserSettings = {
-  vaultPath: string;
+  vaultsJson: string;
+  activeVault: string;
   theme: ThemeMode;
   language: Language;
   showQuickSettings: boolean;
@@ -61,5 +67,6 @@ export type UserSettings = {
   uiFont: string;
   codeFont: string;
   collapsedDirsJson: string;
-  lastOpenedPath: string;
+  openTabsJson: string;
+  selectedPath: string;
 };

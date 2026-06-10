@@ -47,9 +47,9 @@ export class ImageWidget extends WidgetType {
 
 // ── Table widget for rendered HTML tables ──
 class TableWidget extends WidgetType {
-  constructor(readonly text: string) { super(); }
-  eq(other: WidgetType) { return other instanceof TableWidget && this.text === other.text; }
-  toDOM(): HTMLElement {
+  constructor(readonly text: string, readonly pos: number) { super(); }
+  eq(other: WidgetType) { return other instanceof TableWidget && this.text === other.text && this.pos === other.pos; }
+  toDOM(view: EditorView): HTMLElement {
     const rawRows = this.text.trim().split(/\n/).filter((r: string) => r.trim());
     // Find separator row (|---|) and exclude it
     const sepIdx = rawRows.findIndex((r: string) => /^\s*\|[\s\-:|]+\|/.test(r));
@@ -79,8 +79,18 @@ class TableWidget extends WidgetType {
     }
     table.appendChild(thead); table.appendChild(tbody);
     wrapper.appendChild(table);
+    // Click to enter edit mode: place cursor at table position
+    wrapper.addEventListener("click", (e) => {
+      e.stopPropagation();
+      view.dispatch({
+        selection: { anchor: this.pos },
+        scrollIntoView: true,
+      });
+      view.focus();
+    });
     return wrapper;
   }
+  ignoreEvent() { return false; }
 }
 
 class ZwWidget extends WidgetType {
@@ -90,6 +100,53 @@ class ZwWidget extends WidgetType {
     return span;
   }
   eq() { return true; }
+}
+
+// ── Bullet widget — replaces list markers (-, *, +) ──
+class BulletWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.className = "cm-md-list-bullet";
+    span.textContent = "\u2022";
+    return span;
+  }
+  eq() { return true; }
+}
+
+// ── Font color widget — renders <font color="...">text</font> ──
+class FontColorWidget extends WidgetType {
+  constructor(readonly color: string, readonly text: string) { super(); }
+  eq(other: WidgetType) { return other instanceof FontColorWidget && this.color === other.color && this.text === other.text; }
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.style.color = this.color;
+    span.textContent = this.text;
+    return span;
+  }
+}
+
+// ── Code info widget — language badge with click-to-copy ──
+class CodeInfoWidget extends WidgetType {
+  constructor(readonly lang: string, readonly code: string) { super(); }
+  eq(other: WidgetType) { return other instanceof CodeInfoWidget && this.lang === other.lang && this.code === other.code; }
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.className = "cm-md-code-info";
+    span.textContent = this.lang;
+    span.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(this.code).then(() => {
+        span.textContent = "\u2713 Copied";
+        span.classList.add("cm-md-code-info-copied");
+        setTimeout(() => {
+          span.textContent = this.lang;
+          span.classList.remove("cm-md-code-info-copied");
+        }, 2000);
+      }).catch(() => {});
+    });
+    return span;
+  }
+  ignoreEvent() { return false; }
 }
 
 // ── Structured ranges (lines handled by tree, regex must skip) ──
@@ -184,7 +241,7 @@ function buildDecorations(state: EditorState): DecorationSet {
       else if (kind === "Table" || kind === "GFMTable") {
         if (!lineOverlaps) {
           const tableText = doc.sliceString(from, to);
-          decos.push({ from, to, deco: Decoration.replace({ widget: new TableWidget(tableText), block: true }) });
+          decos.push({ from, to, deco: Decoration.replace({ widget: new TableWidget(tableText, from), block: true }) });
         } else {
           let rowIdx = 0;
           for (const child of childrenOf(node)) {
@@ -214,53 +271,76 @@ function buildDecorations(state: EditorState): DecorationSet {
 
       // ── Code Blocks ─
       else if (kind === "FencedCode" || kind === "CodeBlock") {
-        let isOpenFence = true;
-        const walk = (n: SyntaxNode) => {
-          for (const child of childrenOf(n)) {
-            const cKind = child.name;
-            const cFrom = child.from; const cTo = child.to;
-            if (cKind === "CodeMark") {
-              const cmText = doc.sliceString(cFrom, cTo);
-              const tickMatch = cmText.match(/^`{3,}|~{3,}/);
-              if (tickMatch) {
-                const tickLen = tickMatch[0].length;
-                const open = isOpenFence;
-                isOpenFence = false;
-                if (!lineOverlaps) {
-                  if (open) {
-                    const langName = cmText.slice(tickLen).trim();
-                    decos.push({ from: cFrom, to: cFrom, deco: Decoration.line({ class: "cm-md-fence-open" }) });
-                    decos.push({ from: cFrom, to: cFrom + tickLen, deco: Decoration.replace({ widget: new ZwWidget(), block: false }) });
-                    if (langName) {
-                      decos.push({ from: cFrom + tickLen, to: cTo, deco: Decoration.mark({ class: "cm-md-code-info" }) });
-                    }
-                  } else {
-                    decos.push({ from: cFrom, to: cFrom, deco: Decoration.line({ class: "cm-md-fence-close" }) });
-                    decos.push({ from: cFrom, to: cTo, deco: Decoration.replace({ widget: new ZwWidget(), block: false }) });
-                  }
-                } else {
-                  decos.push({ from: cFrom, to: cFrom, deco: Decoration.line({ class: open ? "cm-md-fence-open-edit" : "cm-md-fence-close-edit" }) });
-                  decos.push({ from: cFrom, to: cFrom + tickLen, deco: Decoration.mark({ class: "cm-md-marker-edit" }) });
-                  if (cFrom + tickLen < cTo) {
-                    decos.push({ from: cFrom + tickLen, to: cTo, deco: Decoration.mark({ class: open ? "cm-md-code-info-edit" : "cm-md-marker-dim" }) });
-                  }
-                }
+        // Collect code block info in a single pass
+        let openFenceFrom = 0, openFenceTo = 0, langName = "";
+        let closeFenceFrom = 0, closeFenceTo = 0;
+        let codeFrom = 0, codeTo = 0;
+        let tickLen = 3;
+        for (const child of childrenOf(node)) {
+          if (child.name === "CodeMark") {
+            const cmText = doc.sliceString(child.from, child.to);
+            const tm = cmText.match(/^(`{3,}|~{3,})/);
+            if (tm) {
+              if (!openFenceFrom) {
+                openFenceFrom = child.from; openFenceTo = child.to;
+                tickLen = tm[1].length;
+                langName = cmText.slice(tickLen).trim();
               } else {
-                decos.push({ from: cFrom, to: cTo, deco: Decoration.mark({ class: lineOverlaps ? "cm-md-marker-edit" : "cm-md-marker-dim" }) });
-              }
-            } else if (cKind === "CodeText") {
-              const sLine = doc.lineAt(cFrom);
-              const eLine = doc.lineAt(Math.max(cFrom, cTo - 1));
-              for (let i = sLine.number; i <= eLine.number; i++) {
-                const ln = doc.line(i);
-                if (ln.text.trim() === "") continue;
-                decos.push({ from: ln.from, to: ln.from, deco: Decoration.line({ class: lineOverlaps ? "cm-md-fenced-line-edit" : "cm-md-fenced-line" }) });
+                closeFenceFrom = child.from; closeFenceTo = child.to;
               }
             }
-            walk(child);
+          } else if (child.name === "CodeText") {
+            if (!codeFrom) { codeFrom = child.from; codeTo = child.to; }
           }
-        };
-        walk(node);
+        }
+
+        const codeText = codeFrom ? doc.sliceString(codeFrom, codeTo) : "";
+
+        if (!lineOverlaps) {
+          // Opening fence line
+          decos.push({ from: openFenceFrom, to: openFenceFrom, deco: Decoration.line({ class: "cm-md-fence-open" }) });
+          decos.push({ from: openFenceFrom, to: openFenceFrom + tickLen, deco: Decoration.replace({ widget: new ZwWidget(), block: false }) });
+          if (langName) {
+            decos.push({ from: openFenceFrom + tickLen, to: openFenceTo, deco: Decoration.replace({ widget: new CodeInfoWidget(langName, codeText), block: false }) });
+          }
+
+          // Code text lines
+          if (codeFrom) {
+            const sLine = doc.lineAt(codeFrom);
+            const eLine = doc.lineAt(Math.max(codeFrom, codeTo - 1));
+            for (let i = sLine.number; i <= eLine.number; i++) {
+              const ln = doc.line(i);
+              decos.push({ from: ln.from, to: ln.from, deco: Decoration.line({ class: "cm-md-fenced-line" }) });
+            }
+          }
+
+          // Closing fence line
+          if (closeFenceFrom) {
+            decos.push({ from: closeFenceFrom, to: closeFenceFrom, deco: Decoration.line({ class: "cm-md-fence-close" }) });
+            decos.push({ from: closeFenceFrom, to: closeFenceTo, deco: Decoration.replace({ widget: new ZwWidget(), block: false }) });
+          }
+        } else {
+          // Edit mode: show raw markers dimmed
+          if (openFenceFrom) {
+            decos.push({ from: openFenceFrom, to: openFenceFrom, deco: Decoration.line({ class: "cm-md-fence-open-edit" }) });
+            decos.push({ from: openFenceFrom, to: openFenceFrom + tickLen, deco: Decoration.mark({ class: "cm-md-marker-edit" }) });
+            if (openFenceFrom + tickLen < openFenceTo) {
+              decos.push({ from: openFenceFrom + tickLen, to: openFenceTo, deco: Decoration.mark({ class: "cm-md-code-info-edit" }) });
+            }
+          }
+          if (codeFrom) {
+            const sLine = doc.lineAt(codeFrom);
+            const eLine = doc.lineAt(Math.max(codeFrom, codeTo - 1));
+            for (let i = sLine.number; i <= eLine.number; i++) {
+              const ln = doc.line(i);
+              decos.push({ from: ln.from, to: ln.from, deco: Decoration.line({ class: "cm-md-fenced-line-edit" }) });
+            }
+          }
+          if (closeFenceFrom) {
+            decos.push({ from: closeFenceFrom, to: closeFenceFrom, deco: Decoration.line({ class: "cm-md-fence-close-edit" }) });
+            decos.push({ from: closeFenceFrom, to: closeFenceTo, deco: Decoration.mark({ class: "cm-md-marker-edit" }) });
+          }
+        }
       }
 
       // ── Blockquotes ──
@@ -327,6 +407,17 @@ function buildDecorations(state: EditorState): DecorationSet {
       }
     },
   });
+
+  // ── Phase 2.5: HTML font color pass (all lines, no block skip) ──
+  for (let i = 1; i <= doc.lines; i++) {
+    const line = doc.line(i); const text = line.text;
+    const lineOverlaps = focused && !(line.to <= selLineFrom || line.from >= selLineTo);
+    if (lineOverlaps) continue;
+    for (const m of text.matchAll(/<font\s+color\s*=\s*["']([^"']+)["']\s*>(.*?)<\/font>/gi)) {
+      const from = line.from + m.index!, to = from + m[0].length;
+      decos.push({ from, to, deco: Decoration.replace({ widget: new FontColorWidget(m[1], m[2]), block: false }) });
+    }
+  }
 
   // ── Phase 3: Regex pass ──
   for (let i = 1; i <= doc.lines; i++) {
@@ -423,7 +514,7 @@ function buildDecorations(state: EditorState): DecorationSet {
         if (isOrdered) {
           decos.push({ from: markerFrom, to: markerTo + 1, deco: Decoration.mark({ class: "cm-md-list-number" }) });
         } else {
-          decos.push({ from: markerFrom, to: markerTo + 1, deco: Decoration.mark({ class: "cm-md-list-bullet-mark" }) });
+          decos.push({ from: markerFrom, to: markerTo + 1, deco: Decoration.replace({ widget: new BulletWidget(), block: false }) });
         }
       } else {
         decos.push({ from: markerFrom, to: markerTo, deco: Decoration.mark({ class: "cm-md-marker-edit" }) });

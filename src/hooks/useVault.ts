@@ -23,14 +23,16 @@ export function useVault(
   t: Messages,
   collapsedDirs: Set<string>,
   setCollapsedDirs: (dirs: Set<string>) => void,
+  openTabs: string[],
+  setOpenTabs: (val: string[] | ((prev: string[]) => string[])) => void,
+  selectedPath: string,
+  setSelectedPath: (val: string | ((prev: string) => string)) => void,
 ) {
   const vaultPathRef = useRef(vaultPath);
   vaultPathRef.current = vaultPath;
   const loadRequestRef = useRef(0);
 
   const [entries, setEntries] = useState<NoteEntry[]>([]);
-  const [selectedPath, setSelectedPath] = useState("");
-  const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [content, setContent] = useState("");
   const [preview, setPreview] = useState<Preview>({ type: "empty" });
   const [isDirty, setIsDirty] = useState(false);
@@ -249,8 +251,23 @@ export function useVault(
     } catch { /* ignore */ }
     try { await appInvoke("start_watching_vault", { path: cleanPath }); } catch { /* ignore */ }
     setIsLoading(false);
+
+    // Restore session: reopen tabs that still exist in the vault
+    const validTabs = openTabs.filter((tabPath: string) => list.some((e) => e.path === tabPath));
+    const fallback = validTabs.length > 0
+      ? (list.some((e) => e.path === selectedPath) ? selectedPath : validTabs[validTabs.length - 1])
+      : "";
+    if (fallback) {
+      setOpenTabs(validTabs);
+      setSelectedPath(fallback);
+      const entry = list.find((e) => e.path === fallback);
+      if (entry && !entry.isDir) {
+        const requestId = ++loadRequestRef.current;
+        await loadFile(entry, requestId);
+      }
+    }
     return list;
-  }, [refreshEntries, reindexVault, t.vaultOpening, search]);
+  }, [refreshEntries, reindexVault, t.vaultOpening, search, openTabs, selectedPath, setOpenTabs, setSelectedPath, loadFile]);
 
   const handleContentChange = useCallback((next: string) => {
     setContent(next);

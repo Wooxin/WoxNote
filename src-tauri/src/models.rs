@@ -27,16 +27,19 @@ pub struct NoteEntry {
     pub modified: u64,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
 pub struct UserSettings {
-    pub vault_path: String,
+    pub vaults_json: String,
+    pub active_vault: String,
     pub theme: String,
     pub language: String,
     pub show_quick_settings: bool,
     pub enable_keyboard_shortcuts: bool,
     pub sidebar_collapsed: bool,
     pub window_maximized: bool,
+    pub open_tabs_json: String,
+    pub selected_path: String,
     pub ui_font: String,
     pub code_font: String,
     pub collapsed_dirs_json: String,
@@ -51,5 +54,11 @@ pub struct UserSettings {
     pub shortcut_close_tab: String,
     pub theme_file: String,
     pub toast_position: String,
-    pub last_opened_path: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultInfo {
+    pub name: String,
+    pub path: String,
 }

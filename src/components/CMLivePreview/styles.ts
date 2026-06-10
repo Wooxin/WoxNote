@@ -24,10 +24,10 @@ export const woxHighlightStyle = HighlightStyle.define([
   { tag: tags.comment, color: "#616E88", fontStyle: "italic" },
   { tag: tags.link, color: "#88C0D0", textDecoration: "underline" },
   { tag: tags.monospace, fontFamily: "var(--code-font, monospace)" },
-  { tag: tags.list, color: "#D8DEE9" },
-  { tag: tags.quote, color: "#81A1C1" },
-  { tag: tags.content, color: "#D8DEE9" },
-  { tag: tags.punctuation, color: "#a0b0c8" },
+  { tag: tags.list, color: "var(--cm-text, #D8DEE9)" },
+  { tag: tags.quote, color: "var(--cm-blockquote-color, #81A1C1)" },
+  { tag: tags.content, color: "var(--cm-text, #D8DEE9)" },
+  { tag: tags.punctuation, color: "var(--cm-gutter-color, #a0b0c8)" },
 ]);
 
 export const CSS = `/* =========================================================
@@ -38,9 +38,25 @@ export const CSS = `/* =========================================================
 .cm-editor { height: 100% !important; background: var(--nord0, #2E3440); }
 .cm-scroller { overflow: auto !important; height: 100% !important; }
 
+/* Selection background — bypass CodeMirror theme variables */
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground {
+  background: rgba(94, 129, 172, 0.45) !important;
+}
+.theme-light .cm-editor .cm-selectionBackground,
+.theme-light .cm-editor.cm-focused .cm-selectionBackground {
+  background: rgba(66, 133, 244, 0.32) !important;
+}
+
 .cm-editor .cm-content,
 .cm-editor .cm-line {
   font-family: var(--ui-font, "HarmonyOS Sans", sans-serif) !important;
+}
+
+/* Light mode text — black, not gray */
+.theme-light .cm-editor .cm-content,
+.theme-light .cm-editor .cm-line {
+  color: #000 !important;
 }
 
 /* =========================================================
@@ -365,12 +381,18 @@ export const CSS = `/* =========================================================
 /* =========================================================
    LIST MARKERS — bullet and numbered
    ========================================================= */
-/* Hide raw marker text, show styled bullet via ::before */
+/* Bullet widget — clean bullet replacement */
+.cm-editor .cm-md-list-bullet {
+  color: #88C0D0 !important;
+  margin-right: 4px;
+  font-weight: 700;
+}
+/* Hide old marker approach (fallback) */
 .cm-editor .cm-md-list-bullet-mark {
   color: transparent !important;
 }
 .cm-editor .cm-md-list-bullet-mark::before {
-  content: "•";
+  content: "\u2022";
   color: #88C0D0 !important;
   margin-right: 4px;
   font-weight: 700;
