@@ -1,4 +1,6 @@
-import { FilePlus, FolderPlus, Pencil, Trash2 } from "lucide-react";
+import { FilePlus, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react";
+import { isTauri } from "@tauri-apps/api/core";
+import { openPath } from "@tauri-apps/plugin-opener";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 import { appInvoke } from "../bridge";
@@ -6,6 +8,11 @@ import { appInvoke } from "../bridge";
 export function ContextMenu() {
   const app = useAppContext();
   const vault = useVaultContext();
+
+  const handleOpenInExplorer = (entryPath: string) => {
+    const fullPath = app.activeVault + "\\" + entryPath.replace(/\//g, "\\");
+    if (isTauri()) void openPath(fullPath);
+  };
 
   const handleNewFolder = async (parentPath: string) => {
     try {
@@ -44,6 +51,10 @@ export function ContextMenu() {
             <button onClick={() => { vault.setRenamingEntry(vault.contextMenu!.entry); vault.setContextMenu(null); }}>
               <Pencil size={16} />
               <span>{app.t.rename}</span>
+            </button>
+            <button onClick={() => { handleOpenInExplorer(vault.contextMenu!.entry.path); vault.setContextMenu(null); }}>
+              <FolderOpen size={16} />
+              <span>{app.t.openInSystem}</span>
             </button>
             <button className="danger-item" onClick={() => { vault.setDeleteTarget(vault.contextMenu!.entry); vault.setContextMenu(null); }}>
               <Trash2 size={16} />
