@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { isTauri } from "@tauri-apps/api/core";
 import { FileArchive, FileText, Link, List } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
