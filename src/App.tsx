@@ -1,7 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { openPath } from "@tauri-apps/plugin-opener";
 import { FolderOpen, Vault } from "lucide-react";
 import { ToastProvider } from "./components/Toast";
 import { AppProvider, useAppContext } from "./contexts/AppContext";
@@ -103,10 +102,6 @@ function AppInner() {
     shortcutCloseTab: app.shortcutCloseTab,
   });
 
-  const handleOpenInSystem = (path: string) => {
-    if (isDesktop) void openPath(path);
-  };
-
   // ── Drag & drop: drop a folder to add as vault ──
   useEffect(() => {
     if (!isDesktop) return;
@@ -199,7 +194,7 @@ function AppInner() {
       <Ribbon />
       <FileSidebar />
       <MarkdownLiveEditor />
-      <ContextSidebar onOpenInSystem={handleOpenInSystem} />
+      <ContextSidebar />
 
       {vault.isPaletteOpen && (
         <Suspense fallback={null}>

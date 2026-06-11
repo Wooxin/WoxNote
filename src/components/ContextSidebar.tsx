@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { isTauri } from "@tauri-apps/api/core";
 import { FileArchive, FileText, Link, List } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
@@ -44,13 +43,18 @@ function extractToc(content: string): TocItem[] {
 
 
 
-type Props = {
-  onOpenInSystem: (path: string) => void;
-};
+type Props = Record<string, never>;
 
-export function ContextSidebar({ onOpenInSystem }: Props) {
+export function ContextSidebar(_props: Props) {
   const app = useAppContext();
   const vault = useVaultContext();
+
+  const handleOpenInSystem = () => {
+    if (!vault.selectedEntry) return;
+    const basePath = (app.activeVault + "\\" + vault.selectedEntry.path).replace(/\//g, "\\");
+    const targetPath = vault.selectedEntry.isDir ? basePath : basePath.substring(0, basePath.lastIndexOf("\\"));
+    void appInvoke("open_in_explorer", { path: targetPath });
+  };
   const toc = useMemo(() => extractToc(vault.content), [vault.content]);
   const [rustToc, setRustToc] = useState<TocItem[] | null>(null);
 
@@ -107,7 +111,7 @@ export function ContextSidebar({ onOpenInSystem }: Props) {
       </section>
 
       {vault.selectedEntry && (
-        <button className="system-open" onClick={() => onOpenInSystem(`${app.activeVault}\\${vault.selectedEntry!.path.replace(/\//g, "\\")}`)}>
+        <button className="system-open" onClick={handleOpenInSystem}>
           <FileArchive size={16} />
           <span>{app.t.openInSystem}</span>
         </button>
