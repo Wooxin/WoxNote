@@ -19,6 +19,32 @@ export type NoteEntry = {
   modified: number;
 };
 
+export type TaskEntry = {
+  id: string;
+  path: string;
+  title: string;
+  line: number;
+  text: string;
+  completed: boolean;
+};
+
+export type LineRevealRequest = {
+  line: number;
+  nonce: number;
+};
+
+export type BacklinkEntry = {
+  path: string;
+  line: number;
+  snippet: string;
+};
+
+export type MentionEntry = {
+  path: string;
+  line: number;
+  snippet: string;
+};
+
 export type Preview =
   | { type: "empty" }
   | { type: "markdown"; content: string }

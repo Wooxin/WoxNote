@@ -9,6 +9,8 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { Ribbon } from "./components/Ribbon";
 import { FileSidebar } from "./components/FileSidebar";
 import { MarkdownLiveEditor } from "./components/MarkdownLiveEditor";
+import { TaskPanel } from "./components/TaskPanel";
+import { GraphPanel } from "./components/GraphPanel";
 import { ContextSidebar } from "./components/ContextSidebar";
 import { ContextMenu } from "./components/ContextMenu";
 import { appInvoke } from "./bridge";
@@ -68,25 +70,26 @@ function AppInner() {
     const next = new Set(app.collapsedDirs);
     let changed = false;
 
+    // First launch: collapse all directories, then expand to selected note
+    if (!app.vaultInitialized) {
+      for (const dir of dirPaths) next.add(dir);
+      if (vault.selectedPath) {
+        const parts = vault.selectedPath.split("/");
+        for (let i = 1; i < parts.length; i++) {
+          next.delete(parts.slice(0, i).join("/"));
+        }
+      }
+      app.setCollapsedDirs(next);
+      app.setVaultInitialized(true);
+      return;
+    }
+
+    // Subsequent: only collapse truly NEW directories (don't touch user-opened ones)
     for (const dir of dirPaths) {
       if (!next.has(dir)) { next.add(dir); changed = true; }
     }
-
-    if (vault.selectedPath) {
-      const parts = vault.selectedPath.split("/");
-      for (let i = 1; i < parts.length; i++) {
-        const dirPath = parts.slice(0, i).join("/");
-        if (next.has(dirPath)) { next.delete(dirPath); changed = true; }
-      }
-    }
-
-    if (changed) {
-      app.setCollapsedDirs(next);
-      if (!app.vaultInitialized) app.setVaultInitialized(true);
-    } else if (!app.vaultInitialized) {
-      app.setVaultInitialized(true);
-    }
-  }, [app.vaultInitialized, vault.entries, vault.selectedPath]);
+    if (changed) app.setCollapsedDirs(next);
+  }, [app.vaultInitialized, vault.entries]);
 
   useKeyboardShortcuts({
     enableKeyboardShortcuts: app.enableKeyboardShortcuts,
@@ -193,7 +196,7 @@ function AppInner() {
     >
       <Ribbon />
       <FileSidebar />
-      <MarkdownLiveEditor />
+      {vault.isGraphOpen ? <GraphPanel /> : vault.isTasksOpen ? <TaskPanel /> : <MarkdownLiveEditor />}
       <ContextSidebar />
 
       {vault.isPaletteOpen && (

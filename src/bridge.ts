@@ -35,7 +35,14 @@ export async function appInvoke<T>(command: string, args?: Record<string, unknow
       delete mockStore[path];
       return undefined as T;
     }
-    case "search_vault": { const q = String(args?.query ?? "").toLowerCase(); return Object.entries(mockStore).filter(([,c]) => c.toLowerCase().includes(q)).map(([p,c]) => ({ path: p, title: p.replace(/\.md$/,""), snippet: c.slice(0,100), score: 1 })) as T; }
+    case "search_vault": {
+      const q = String(args?.query ?? "").toLowerCase();
+      return Object.entries(mockStore).filter(([,c]) => c.toLowerCase().includes(q)).map(([p,c]) => {
+        const lines = c.split(/\r?\n/);
+        const lineIndex = Math.max(0, lines.findIndex((line) => line.toLowerCase().includes(q)));
+        return { path: p, title: p.replace(/\.md$/,""), snippet: lines[lineIndex]?.slice(0,100) ?? c.slice(0,100), line: lineIndex + 1, score: 1 };
+      }) as T;
+    }
     case "get_backlinks_for": case "get_forward_links_for": return [] as T;
     case "get_all_tags": return [] as T;
     case "preview_binary": return { type: "unsupported", sheets: [], text: "", slides: [], message: "" } as T;

@@ -1,14 +1,38 @@
-use crate::{app_data_dir, get_setting, models::{StartupInfo, UserSettings}, open_db, set_setting};
+use crate::{
+    app_data_dir, get_setting,
+    models::{StartupInfo, UserSettings},
+    open_db, set_setting,
+};
 
 macro_rules! load_str {
-    ($s:expr, $c:expr, $k:literal, $f:ident) => { if let Some(v) = get_setting($c, $k)? { $s.$f = v; } };
+    ($s:expr, $c:expr, $k:literal, $f:ident) => {
+        if let Some(v) = get_setting($c, $k)? {
+            $s.$f = v;
+        }
+    };
 }
 macro_rules! load_bool {
-    ($s:expr, $c:expr, $k:literal, $f:ident) => { if let Some(v) = get_setting($c, $k)? { $s.$f = v == "true"; } };
-    ($s:expr, $c:expr, $k:literal, $f:ident, invert: $d:literal) => { if let Some(v) = get_setting($c, $k)? { $s.$f = v != $d; } };
+    ($s:expr, $c:expr, $k:literal, $f:ident) => {
+        if let Some(v) = get_setting($c, $k)? {
+            $s.$f = v == "true";
+        }
+    };
+    ($s:expr, $c:expr, $k:literal, $f:ident, invert: $d:literal) => {
+        if let Some(v) = get_setting($c, $k)? {
+            $s.$f = v != $d;
+        }
+    };
 }
-macro_rules! save_str { ($c:expr, $k:literal, $v:expr) => { set_setting($c, $k, $v)?; }; }
-macro_rules! save_bool { ($c:expr, $k:literal, $v:expr) => { set_setting($c, $k, if $v {"true"} else {"false"})?; }; }
+macro_rules! save_str {
+    ($c:expr, $k:literal, $v:expr) => {
+        set_setting($c, $k, $v)?;
+    };
+}
+macro_rules! save_bool {
+    ($c:expr, $k:literal, $v:expr) => {
+        set_setting($c, $k, if $v { "true" } else { "false" })?;
+    };
+}
 
 #[tauri::command]
 pub fn startup_info(app_handle: tauri::AppHandle) -> Result<StartupInfo, String> {
@@ -24,16 +48,28 @@ pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, S
     let mut settings = UserSettings {
         vaults_json: "[]".into(),
         active_vault: String::new(),
-        theme: "dark".into(), language: "zh".into(),
-        show_quick_settings: false, enable_keyboard_shortcuts: true, sidebar_collapsed: false,
-        window_maximized: false, open_tabs_json: String::new(), selected_path: String::new(),
-        ui_font: "HarmonyOS Sans".into(), code_font: "Cascadia Code".into(),
-        collapsed_dirs_json: "[]".into(), vault_initialized: false,
-        content_width: "900".into(), font_size_global: true,
-        ui_font_size: "14".into(), content_font_size: "15".into(),
-        shortcut_palette: "Ctrl+P".into(), shortcut_new_note: "Ctrl+N".into(),
-        shortcut_save: "Ctrl+S".into(), shortcut_close_tab: "Ctrl+W".into(),
-        theme_file: String::new(), toast_position: "bottom-left".into(),
+        theme: "dark".into(),
+        language: "zh".into(),
+        show_quick_settings: false,
+        enable_keyboard_shortcuts: true,
+        sidebar_collapsed: false,
+        window_maximized: false,
+        open_tabs_json: String::new(),
+        selected_path: String::new(),
+        ui_font: "HarmonyOS Sans".into(),
+        code_font: "Cascadia Code".into(),
+        collapsed_dirs_json: "[]".into(),
+        vault_initialized: false,
+        content_width: "900".into(),
+        font_size_global: true,
+        ui_font_size: "14".into(),
+        content_font_size: "15".into(),
+        shortcut_palette: "Ctrl+P".into(),
+        shortcut_new_note: "Ctrl+N".into(),
+        shortcut_save: "Ctrl+S".into(),
+        shortcut_close_tab: "Ctrl+W".into(),
+        theme_file: String::new(),
+        toast_position: "bottom-left".into(),
     };
     let conn = open_db(&app_handle)?;
     load_str!(settings, &conn, "vaultsJson", vaults_json);
@@ -60,22 +96,36 @@ pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, S
     load_str!(settings, &conn, "shortcutCloseTab", shortcut_close_tab);
     load_str!(settings, &conn, "themeFile", theme_file);
     load_str!(settings, &conn, "toastPosition", toast_position);
-    eprintln!("[WoxNote] get_user_settings loaded: vaultsJson={} activeVault={}", settings.vaults_json, settings.active_vault);
+    eprintln!(
+        "[WoxNote] get_user_settings loaded: vaultsJson={} activeVault={}",
+        settings.vaults_json, settings.active_vault
+    );
     Ok(settings)
 }
 
 #[tauri::command]
-pub fn save_user_settings(app_handle: tauri::AppHandle, settings: UserSettings) -> Result<(), String> {
-    eprintln!("[WoxNote] save_user_settings called: vaultsJson={} activeVault={}", settings.vaults_json, settings.active_vault);
+pub fn save_user_settings(
+    app_handle: tauri::AppHandle,
+    settings: UserSettings,
+) -> Result<(), String> {
+    eprintln!(
+        "[WoxNote] save_user_settings called: vaultsJson={} activeVault={}",
+        settings.vaults_json, settings.active_vault
+    );
     let conn = open_db(&app_handle)?;
-    conn.execute("BEGIN TRANSACTION", []).map_err(|e| e.to_string())?;
+    conn.execute("BEGIN TRANSACTION", [])
+        .map_err(|e| e.to_string())?;
     let r = (|| -> Result<(), String> {
         save_str!(&conn, "vaultsJson", &settings.vaults_json);
         save_str!(&conn, "activeVault", &settings.active_vault);
         save_str!(&conn, "theme", &settings.theme);
         save_str!(&conn, "language", &settings.language);
         save_bool!(&conn, "showQuickSettings", settings.show_quick_settings);
-        save_bool!(&conn, "enableKeyboardShortcuts", settings.enable_keyboard_shortcuts);
+        save_bool!(
+            &conn,
+            "enableKeyboardShortcuts",
+            settings.enable_keyboard_shortcuts
+        );
         save_bool!(&conn, "sidebarCollapsed", settings.sidebar_collapsed);
         save_bool!(&conn, "windowMaximized", settings.window_maximized);
         save_str!(&conn, "openTabsJson", &settings.open_tabs_json);
@@ -96,7 +146,10 @@ pub fn save_user_settings(app_handle: tauri::AppHandle, settings: UserSettings) 
         save_str!(&conn, "toastPosition", &settings.toast_position);
         Ok(())
     })();
-    if r.is_err() { let _ = conn.execute("ROLLBACK", []); return r; }
+    if r.is_err() {
+        let _ = conn.execute("ROLLBACK", []);
+        return r;
+    }
     conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
     Ok(())
 }

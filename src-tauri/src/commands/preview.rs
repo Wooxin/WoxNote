@@ -55,7 +55,9 @@ pub fn count_words(content: String) -> usize {
             count += 1;
             in_ascii_word = false;
         } else if ch.is_ascii_alphanumeric() {
-            if !in_ascii_word { count += 1; }
+            if !in_ascii_word {
+                count += 1;
+            }
             in_ascii_word = true;
         } else {
             in_ascii_word = false;
@@ -209,12 +211,24 @@ fn extract_docx_text(path: &Path) -> Result<String, String> {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
                 if e.local_name().as_ref() == b"p" {
-                    if !text.is_empty() && !text.ends_with("\n\n") { text.push_str("\n\n"); }
+                    if !text.is_empty() && !text.ends_with("\n\n") {
+                        text.push_str("\n\n");
+                    }
                     in_paragraph = true;
                 }
             }
-            Ok(Event::Text(e)) => { if in_paragraph { if let Ok(t) = e.unescape() { text.push_str(&t); } } }
-            Ok(Event::End(e)) => { if e.local_name().as_ref() == b"p" { in_paragraph = false; } }
+            Ok(Event::Text(e)) => {
+                if in_paragraph {
+                    if let Ok(t) = e.unescape() {
+                        text.push_str(&t);
+                    }
+                }
+            }
+            Ok(Event::End(e)) => {
+                if e.local_name().as_ref() == b"p" {
+                    in_paragraph = false;
+                }
+            }
             Ok(Event::Eof) => break,
             Err(_) => break,
             _ => {}

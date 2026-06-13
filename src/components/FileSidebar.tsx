@@ -84,11 +84,7 @@ export function FileSidebar() {
       {vault.ftsResults.length > 0 && (
         <div className="sidebar-search-results">
           {vault.ftsResults.map((result) => (
-            <button key={result.path} onClick={() => {
-              vault.setGlobalSearch("");
-              const entry = vault.entries.find((e) => e.path === result.path);
-              if (entry) void vault.handleSelectFile(entry);
-            }}>
+            <button key={`${result.path}:${result.line}`} onClick={() => void vault.openSearchResult(result)}>
               <File size={17} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -97,7 +93,7 @@ export function FileSidebar() {
                 <div
                   style={{ fontSize: 11, color: "#7f8a96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                 >
-                  {renderSnippet(result.snippet)}
+                  {app.t.line} {result.line} · {renderSnippet(result.snippet)}
                 </div>
               </div>
             </button>

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { BookOpen, Columns2, Command, FolderOpen, Languages, Moon, Plus, RefreshCw, Settings, Sun, Vault } from "lucide-react";
+import { BookOpen, CheckSquare, Columns2, Command, FolderOpen, Languages, Moon, Network, Plus, RefreshCw, Settings, Sun, Vault } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 
@@ -32,6 +32,8 @@ export function Ribbon() {
         <>
           <button className="ribbon-button" title={app.t.quickOpen} onClick={() => vault.setIsPaletteOpen(true)}><Command size={20} /><span>{app.t.quickOpen}</span></button>
           <button className="ribbon-button" title={app.t.newNote} onClick={() => void vault.createNote()}><Plus size={20} /><span>{app.t.newNote}</span></button>
+          <button className={`ribbon-button ${vault.isTasksOpen ? "active" : ""}`} title={app.t.tasks} onClick={() => { vault.setIsGraphOpen(false); vault.setIsTasksOpen(!vault.isTasksOpen); if (!vault.isTasksOpen) void vault.refreshTasks(); }}><CheckSquare size={20} /><span>{app.t.tasks}</span></button>
+          <button className={`ribbon-button ${vault.isGraphOpen ? "active" : ""}`} title={app.t.graph} onClick={() => { vault.setIsTasksOpen(false); vault.setIsGraphOpen(!vault.isGraphOpen); }}><Network size={20} /><span>{app.t.graph}</span></button>
           <button className="ribbon-button" title={app.t.refreshVault} onClick={() => void vault.refreshEntries(app.activeVault)}><RefreshCw size={20} /><span>{app.t.refreshVault}</span></button>
         </>
       )}

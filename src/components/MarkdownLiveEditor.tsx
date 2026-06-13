@@ -180,6 +180,7 @@ export function MarkdownLiveEditor() {
           <BinaryPreview preview={vault.preview} />
         ) : (
           <CMLivePreview
+            key={vault.selectedEntry.path}
             content={vault.content}
             contentWidth={app.contentWidth}
             contentFontSize={app.contentFontSize}
@@ -190,6 +191,7 @@ export function MarkdownLiveEditor() {
             onClickWikiLink={(title) => vault.openLinkByTitle(title)} onClickTag={(tag) => vault.setGlobalSearch(tag)}
             onScrollToHeading={(fn) => { scrollToHeadingRef.current = fn; vault.setScrollToHeading(fn); }}
             onCursorChange={(line, col) => { setCursorLine(line); setCursorCol(col); }}
+            revealLineRequest={vault.lineRevealRequest}
             vaultPath={app.activeVault}
           />
         )}

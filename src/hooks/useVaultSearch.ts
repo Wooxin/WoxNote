@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { NoteEntry } from "../types";
 import { appInvoke } from "../bridge";
 
-type SearchResult = { path: string; title: string; snippet: string; score: number };
+type SearchResult = { path: string; title: string; snippet: string; line: number; score: number };
 type TagEntry = { name: string; count: number };
 
 export function useVaultSearch(

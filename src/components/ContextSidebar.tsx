@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
-import { FileArchive, FileText, Link, List } from "lucide-react";
+import { FileArchive, FileText, Link, List, SquarePen } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 import { titleFromPath } from "../utils/helpers";
@@ -40,6 +40,10 @@ function extractToc(content: string): TocItem[] {
     items.push({ level: match[1].length, text: match[2].trim() });
   }
   return items;
+}
+
+function wikiTarget(link: string) {
+  return link.split("|")[0].split("#")[0].trim().toLowerCase();
 }
 
 
@@ -96,19 +100,40 @@ export function ContextSidebar(_props: Props) {
 
       <section className="context-section">
         <div className="context-title"><Link size={16} /><span>{app.t.backlinks}</span></div>
-        {vault.backlinks.length === 0 ? <p className="muted">{app.t.noBacklinks}</p> : vault.backlinks.slice(0, 5).map((path) => (
-          <button key={path} onClick={() => {
-            const entry = vault.entries.find((item) => item.path === path);
-            if (entry) void vault.handleSelectFile(entry);
-          }}>{titleFromPath(path)}</button>
+        {vault.backlinks.length === 0 ? <p className="muted">{app.t.noBacklinks}</p> : vault.backlinks.slice(0, 8).map((backlink) => (
+          <button key={`${backlink.path}:${backlink.line}`} className="backlink-item" onClick={() => void vault.openBacklink(backlink)}>
+            <span>{titleFromPath(backlink.path)}</span>
+            <small>{app.t.line} {backlink.line} · {backlink.snippet || backlink.path}</small>
+          </button>
+        ))}
+      </section>
+
+      <section className="context-section">
+        <div className="context-title"><Link size={16} /><span>{app.t.unlinkedMentions}</span></div>
+        {vault.unlinkedMentions.length === 0 ? <p className="muted">{app.t.noUnlinkedMentions}</p> : vault.unlinkedMentions.slice(0, 8).map((mention) => (
+          <div key={`${mention.path}:${mention.line}`} className="mention-row">
+            <button className="backlink-item" onClick={() => void vault.openMention(mention)}>
+              <span>{titleFromPath(mention.path)}</span>
+              <small>{app.t.line} {mention.line} · {mention.snippet || mention.path}</small>
+            </button>
+            <button className="mention-link-action" title={app.t.linkMention} onClick={() => void vault.linkMention(mention)}>
+              <SquarePen size={14} />
+            </button>
+          </div>
         ))}
       </section>
 
       <section className="context-section">
         <div className="context-title"><Link size={16} /><span>{app.t.outLinks}</span></div>
-        {vault.links.length === 0 ? <p className="muted">{app.t.noLinks}</p> : vault.links.slice(0, 5).map((link) => (
-          <button key={link} onClick={() => vault.openLinkByTitle(link)}>[[{link}]]</button>
-        ))}
+        {vault.links.length === 0 ? <p className="muted">{app.t.noLinks}</p> : vault.links.slice(0, 5).map((link) => {
+          const exists = vault.notes.some((entry) => titleFromPath(entry.path).toLowerCase() === wikiTarget(link));
+          return (
+            <button key={link} className={exists ? "" : "unresolved-link"} onClick={() => vault.openLinkByTitle(link)}>
+              <span>[[{link}]]</span>
+              {!exists && <small>{app.t.newNote}</small>}
+            </button>
+          );
+        })}
       </section>
 
       {vault.selectedEntry && (

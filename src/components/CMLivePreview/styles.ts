@@ -37,6 +37,11 @@ export const CSS = `/* =========================================================
 /* -- Core editor -- */
 .cm-editor { height: 100% !important; background: var(--nord0, #2E3440); }
 .cm-scroller { overflow: auto !important; height: 100% !important; }
+.cm-editor.cm-image-drop-target .cm-scroller {
+  outline: 2px dashed rgba(136, 192, 208, 0.72);
+  outline-offset: -12px;
+  background: rgba(136, 192, 208, 0.04);
+}
 
 /* Selection background — bypass CodeMirror theme variables */
 .cm-editor .cm-selectionBackground,
@@ -327,6 +332,30 @@ export const CSS = `/* =========================================================
    TASKS
    ========================================================= */
 .cm-editor .cm-md-task-marker { color: #7eb8ff; }
+.cm-editor .cm-md-task-checkbox {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-right: 7px;
+  border: 1.5px solid #7eb8ff;
+  border-radius: 4px;
+  color: #10151b;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: -2px;
+  cursor: pointer;
+}
+.cm-editor .cm-md-task-checkbox.checked {
+  background: #7eb8ff;
+  border-color: #7eb8ff;
+}
+.cm-editor .cm-md-task-done {
+  color: #7f8a96 !important;
+  text-decoration: line-through !important;
+}
 
 /* =========================================================
    CALLOUTS — admonition blocks

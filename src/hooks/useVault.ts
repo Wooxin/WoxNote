@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
-import type { NoteEntry, Preview } from "../types";
+import type { BacklinkEntry, LineRevealRequest, MentionEntry, NoteEntry, Preview, TaskEntry } from "../types";
 import type { Messages } from "../i18n";
 import { EDITABLE_EXTENSIONS, NOTE_EXTENSIONS, TEXT_EXTENSIONS } from "../constants";
 import { buildBinaryPreview } from "../utils/preview";
@@ -9,8 +9,40 @@ import { useAutoSave } from "./useAutoSave";
 import { useVaultSearch } from "./useVaultSearch";
 import { useVaultLinks } from "./useVaultLinks";
 import { useVaultEvents } from "./useVaultEvents";
+import { titleFromPath } from "../utils/helpers";
 
 type TagEntry = { name: string; count: number };
+type SearchResult = { path: string; title: string; snippet: string; line: number; score: number };
+
+function extractTasks(path: string, content: string): TaskEntry[] {
+  const title = path.split("/").pop()?.replace(/\.(md|markdown|novel)$/i, "") ?? path;
+  const tasks: TaskEntry[] = [];
+  content.split(/\r?\n/).forEach((line, index) => {
+    const match = line.match(/^\s*[-*]\s+\[( |x|X)\]\s+(.+)$/);
+    if (!match) return;
+    tasks.push({
+      id: `${path}:${index + 1}`,
+      path,
+      title,
+      line: index + 1,
+      text: match[2].trim(),
+      completed: match[1].toLowerCase() === "x",
+    });
+  });
+  return tasks;
+}
+
+function todayNoteName() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 function rewriteMovedPath(path: string, oldPath: string, newPath: string): string {
   if (path === oldPath) return newPath;
@@ -40,6 +72,11 @@ export function useVault(
   const [status, setStatus] = useState(t.welcomeStatus);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTasksOpen, setIsTasksOpen] = useState(false);
+  const [isGraphOpen, setIsGraphOpen] = useState(false);
+  const [tasks, setTasks] = useState<TaskEntry[]>([]);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [lineRevealRequest, setLineRevealRequest] = useState<LineRevealRequest | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; entry: NoteEntry } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<NoteEntry | null>(null);
   const [renamingEntry, setRenamingEntry] = useState<NoteEntry | null>(null);
@@ -139,8 +176,6 @@ export function useVault(
     await loadFile(entry, requestId);
   }, [isDirty, loadFile, saveCurrent, t.vaultOpening]);
 
-  const links = useVaultLinks(selectedPath, search.isIndexed, notes, handleSelectFile, setStatus, graphRefreshKey);
-
   const reindexVault = useCallback(async (root: string) => {
     search.setIsIndexed(false);
     await appInvoke("reindex_vault", { path: root });
@@ -154,6 +189,30 @@ export function useVault(
     }
   }, [bumpGraphRefresh, search]);
 
+  const createLinkedNote = useCallback(async (title: string) => {
+    const root = vaultPathRef.current;
+    const cleanTitle = title.trim();
+    if (!root || !cleanTitle) return;
+    if (isDirty) await saveCurrent();
+    const path = await appInvoke<string>("create_note", { root, title: cleanTitle });
+    const list = await refreshEntries(root);
+    const created = list.find((entry) => entry.path === path) ?? {
+      name: path.split("/").pop() ?? path,
+      path,
+      extension: "md",
+      isDir: false,
+      size: 0,
+      modified: Date.now() / 1000,
+    };
+    try {
+      await appInvoke("index_file", { root, relativePath: path });
+      bumpGraphRefresh();
+    } catch { /* ignore */ }
+    await handleSelectFile(created);
+  }, [bumpGraphRefresh, handleSelectFile, isDirty, refreshEntries, saveCurrent]);
+
+  const links = useVaultLinks(vaultPath, selectedPath, search.isIndexed, notes, handleSelectFile, createLinkedNote, setStatus, graphRefreshKey);
+
   const createNote = useCallback(async () => {
     const root = vaultPathRef.current;
     if (!root) return;
@@ -162,6 +221,133 @@ export function useVault(
     const created: NoteEntry = { name: path.split("/").pop() ?? path, path, extension: "md", isDir: false, size: 0, modified: Date.now() / 1000 };
     await handleSelectFile(created);
   }, [handleSelectFile, refreshEntries, t.untitled]);
+
+  const openDailyNote = useCallback(async () => {
+    const root = vaultPathRef.current;
+    if (!root) return;
+    if (isDirty) await saveCurrent();
+    const title = todayNoteName();
+    const path = `Daily/${title}.md`;
+    let list = entries;
+    let entry = list.find((item) => item.path === path);
+    if (!entry) {
+      const content = `# ${title}\n\n## Tasks\n\n- [ ] \n\n## Notes\n\n`;
+      await appInvoke("write_text_file", { root, relativePath: path, content });
+      try { await appInvoke("index_file", { root, relativePath: path }); } catch { /* ignore */ }
+      list = await refreshEntries(root);
+      entry = list.find((item) => item.path === path);
+    }
+    const dailyEntry: NoteEntry = entry ?? { name: `${title}.md`, path, extension: "md", isDir: false, size: 0, modified: Date.now() / 1000 };
+    await handleSelectFile(dailyEntry);
+  }, [entries, handleSelectFile, isDirty, refreshEntries, saveCurrent]);
+
+  const refreshTasks = useCallback(async () => {
+    const root = vaultPathRef.current;
+    if (!root) {
+      setTasks([]);
+      return;
+    }
+    setIsLoadingTasks(true);
+    try {
+      const next: TaskEntry[] = [];
+      for (const note of notes) {
+        try {
+          const text = note.path === selectedPath && canReadMarkdown ? content : await appInvoke<string>("read_text_file", { root, relativePath: note.path });
+          next.push(...extractTasks(note.path, text));
+        } catch { /* ignore unreadable note */ }
+      }
+      next.sort((a, b) => Number(a.completed) - Number(b.completed) || a.path.localeCompare(b.path) || a.line - b.line);
+      setTasks(next);
+    } finally {
+      setIsLoadingTasks(false);
+    }
+  }, [canReadMarkdown, content, notes, selectedPath]);
+
+  const openTask = useCallback(async (task: TaskEntry) => {
+    const entry = entries.find((item) => item.path === task.path);
+    if (!entry || entry.isDir) return;
+    setIsTasksOpen(false);
+    await handleSelectFile(entry);
+    setLineRevealRequest({ line: task.line, nonce: Date.now() });
+  }, [entries, handleSelectFile]);
+
+  const openSearchResult = useCallback(async (result: SearchResult) => {
+    const entry = entries.find((item) => item.path === result.path);
+    if (!entry || entry.isDir) return;
+    search.setGlobalSearch("");
+    await handleSelectFile(entry);
+    setLineRevealRequest({ line: result.line || 1, nonce: Date.now() });
+  }, [entries, handleSelectFile, search]);
+
+  const openBacklink = useCallback(async (backlink: BacklinkEntry) => {
+    const entry = entries.find((item) => item.path === backlink.path);
+    if (!entry || entry.isDir) return;
+    await handleSelectFile(entry);
+    setLineRevealRequest({ line: backlink.line || 1, nonce: Date.now() });
+  }, [entries, handleSelectFile]);
+
+  const openMention = useCallback(async (mention: MentionEntry) => {
+    const entry = entries.find((item) => item.path === mention.path);
+    if (!entry || entry.isDir) return;
+    await handleSelectFile(entry);
+    setLineRevealRequest({ line: mention.line || 1, nonce: Date.now() });
+  }, [entries, handleSelectFile]);
+
+  const linkMention = useCallback(async (mention: MentionEntry) => {
+    const root = vaultPathRef.current;
+    if (!root || !selectedPath) return;
+    const title = titleFromPath(selectedPath);
+    const source = mention.path === selectedPath && canReadMarkdown ? content : await appInvoke<string>("read_text_file", { root, relativePath: mention.path });
+    const lines = source.split(/\r?\n/);
+    const index = mention.line - 1;
+    const line = lines[index];
+    if (!line) return;
+    const pattern = new RegExp(escapeRegExp(title), "i");
+    const nextLine = line.replace(pattern, `[[${title}]]`);
+    if (nextLine === line) return;
+    lines[index] = nextLine;
+    const newline = source.includes("\r\n") ? "\r\n" : "\n";
+    const nextContent = lines.join(newline);
+    await appInvoke("write_text_file", { root, relativePath: mention.path, content: nextContent });
+    if (mention.path === selectedPath) {
+      setContent(nextContent);
+      setPreview(canReadMarkdown ? { type: "markdown", content: nextContent } : { type: "text", content: nextContent });
+      setIsDirty(false);
+    }
+    try {
+      await appInvoke("index_file", { root, relativePath: mention.path });
+      bumpGraphRefresh();
+    } catch { /* ignore */ }
+    await openMention(mention);
+  }, [bumpGraphRefresh, canReadMarkdown, content, openMention, selectedPath]);
+
+  const toggleTask = useCallback(async (task: TaskEntry) => {
+    const root = vaultPathRef.current;
+    if (!root) return;
+    const source = task.path === selectedPath && canReadMarkdown ? content : await appInvoke<string>("read_text_file", { root, relativePath: task.path });
+    const lines = source.split(/\r?\n/);
+    const index = task.line - 1;
+    const line = lines[index];
+    if (!line) return;
+    const nextLine = line.replace(/^(\s*[-*]\s+\[)( |x|X)(\]\s+)/, (_, prefix: string, mark: string, suffix: string) => (
+      `${prefix}${mark.toLowerCase() === "x" ? " " : "x"}${suffix}`
+    ));
+    if (nextLine === line) return;
+    lines[index] = nextLine;
+    const newline = source.includes("\r\n") ? "\r\n" : "\n";
+    const nextContent = lines.join(newline);
+    await appInvoke("write_text_file", { root, relativePath: task.path, content: nextContent });
+    if (task.path === selectedPath) {
+      setContent(nextContent);
+      setPreview(canReadMarkdown ? { type: "markdown", content: nextContent } : { type: "text", content: nextContent });
+      setIsDirty(false);
+    }
+    try {
+      await appInvoke("index_file", { root, relativePath: task.path });
+      bumpGraphRefresh();
+    } catch { /* ignore */ }
+    await refreshTasks();
+  }, [bumpGraphRefresh, canReadMarkdown, content, refreshTasks, selectedPath]);
 
   const closeTab = useCallback(async (path: string) => {
     if (selectedPath === path && isDirty) await saveCurrent();
@@ -295,6 +481,9 @@ export function useVault(
     content, preview, isDirty, setIsDirty, isLoading,
     isPaletteOpen, setIsPaletteOpen,
     isSettingsOpen, setIsSettingsOpen,
+    isTasksOpen, setIsTasksOpen,
+    isGraphOpen, setIsGraphOpen,
+    tasks, isLoadingTasks, refreshTasks, openTask, toggleTask, openSearchResult, openBacklink, openMention, linkMention, lineRevealRequest,
     contextMenu, setContextMenu,
     deleteTarget, setDeleteTarget,
     renamingEntry, setRenamingEntry,
@@ -305,11 +494,12 @@ export function useVault(
     ftsResults: search.ftsResults,
     tags: search.tagEntries,
     links: links.forwardLinks,
-    backlinks: links.backlinkPaths,
+    backlinks: links.backlinks,
+    unlinkedMentions: links.unlinkedMentions,
     canEdit, canReadMarkdown,
     refreshEntries, activateVault,
     saveCurrent, handleSelectFile,
-    createNote, closeTab, deleteEntry, renameEntry,
+    createNote, openDailyNote, closeTab, deleteEntry, renameEntry,
     openLinkByTitle: links.openLinkByTitle,
     handleContentChange,
     toggleDirCollapse,

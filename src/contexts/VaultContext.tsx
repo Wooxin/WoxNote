@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState } from "react";
 import { useVault } from "../hooks/useVault";
 import { useAppContext } from "./AppContext";
-import type { NoteEntry, Preview } from "../types";
+import type { BacklinkEntry, LineRevealRequest, MentionEntry, NoteEntry, Preview, TaskEntry } from "../types";
 
-type SearchResult = { path: string; title: string; snippet: string; score: number };
+type SearchResult = { path: string; title: string; snippet: string; line: number; score: number };
 type TagEntry = { name: string; count: number };
 
 export type VaultContextType = {
@@ -23,6 +23,20 @@ export type VaultContextType = {
   setIsPaletteOpen: (v: boolean) => void;
   isSettingsOpen: boolean;
   setIsSettingsOpen: (v: boolean) => void;
+  isTasksOpen: boolean;
+  setIsTasksOpen: (v: boolean) => void;
+  isGraphOpen: boolean;
+  setIsGraphOpen: (v: boolean) => void;
+  tasks: TaskEntry[];
+  isLoadingTasks: boolean;
+  lineRevealRequest: LineRevealRequest | null;
+  refreshTasks: () => Promise<void>;
+  openTask: (task: TaskEntry) => Promise<void>;
+  toggleTask: (task: TaskEntry) => Promise<void>;
+  openSearchResult: (result: SearchResult) => Promise<void>;
+  openBacklink: (backlink: BacklinkEntry) => Promise<void>;
+  openMention: (mention: MentionEntry) => Promise<void>;
+  linkMention: (mention: MentionEntry) => Promise<void>;
   contextMenu: { x: number; y: number; entry: NoteEntry } | null;
   setContextMenu: (v: { x: number; y: number; entry: NoteEntry } | null) => void;
   deleteTarget: NoteEntry | null;
@@ -39,13 +53,15 @@ export type VaultContextType = {
   ftsResults: SearchResult[];
   tags: TagEntry[];
   links: string[];
-  backlinks: string[];
+  backlinks: BacklinkEntry[];
+  unlinkedMentions: MentionEntry[];
   canEdit: boolean;
   refreshEntries: (path: string) => Promise<NoteEntry[]>;
   activateVault: (path: string) => Promise<NoteEntry[]>;
   saveCurrent: () => Promise<void>;
   handleSelectFile: (entry: NoteEntry) => Promise<void>;
   createNote: () => Promise<void>;
+  openDailyNote: () => Promise<void>;
   closeTab: (path: string) => Promise<void>;
   deleteEntry: (entry: NoteEntry) => Promise<void>;
   renameEntry: (entry: NoteEntry, newName: string) => Promise<string | null>;

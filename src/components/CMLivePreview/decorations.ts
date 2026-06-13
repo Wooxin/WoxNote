@@ -113,6 +113,28 @@ class BulletWidget extends WidgetType {
   eq() { return true; }
 }
 
+class TaskCheckboxWidget extends WidgetType {
+  constructor(readonly from: number, readonly checked: boolean) { super(); }
+  eq(other: WidgetType) { return other instanceof TaskCheckboxWidget && this.checked === other.checked; }
+  toDOM(view: EditorView): HTMLElement {
+    const box = document.createElement("span");
+    box.className = "cm-md-task-checkbox" + (this.checked ? " checked" : "");
+    box.textContent = this.checked ? "\u2713" : "";
+    box.setAttribute("role", "checkbox");
+    box.setAttribute("aria-checked", this.checked ? "true" : "false");
+    box.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      view.dispatch({
+        changes: { from: this.from + 1, to: this.from + 2, insert: this.checked ? " " : "x" },
+      });
+      view.focus();
+    });
+    return box;
+  }
+  ignoreEvent() { return false; }
+}
+
 // ── Font color widget — renders <font color="...">text</font> ──
 class FontColorWidget extends WidgetType {
   constructor(readonly color: string, readonly text: string) { super(); }
@@ -502,6 +524,8 @@ function buildDecorations(state: EditorState): DecorationSet {
         decos.push({ from: to - 1, to, deco: Decoration.mark({ class: "cm-md-marker-edit" }) });
       }
     }
+    const taskMatch = text.match(/^(\s*[-*+]\s+)\[([ xX])\]\s/);
+
     // List markers
     const listMatch = text.match(/^(\s*)([-*+]|\d+[.)])\s/);
     if (listMatch) {
@@ -510,8 +534,11 @@ function buildDecorations(state: EditorState): DecorationSet {
       const markerFrom = line.from + indent.length;
       const markerTo = markerFrom + marker.length;
       const isOrdered = /^\d/.test(marker);
+      const isTaskLine = Boolean(taskMatch);
       if (!lineOverlaps) {
-        if (isOrdered) {
+        if (isTaskLine) {
+          decos.push({ from: markerFrom, to: markerTo + 1, deco: Decoration.replace({ widget: new ZwWidget(), block: false }) });
+        } else if (isOrdered) {
           decos.push({ from: markerFrom, to: markerTo + 1, deco: Decoration.mark({ class: "cm-md-list-number" }) });
         } else {
           decos.push({ from: markerFrom, to: markerTo + 1, deco: Decoration.replace({ widget: new BulletWidget(), block: false }) });
@@ -521,10 +548,17 @@ function buildDecorations(state: EditorState): DecorationSet {
       }
     }
     // Task checkbox
-    const taskMatch = text.match(/^(\s*[-*+])\s+\[([ xX])\]\s/);
     if (taskMatch) {
       const bracketPos = line.from + taskMatch[0].indexOf("[");
-      decos.push({ from: bracketPos, to: bracketPos + 3, deco: Decoration.mark({ class: "cm-md-task-marker" }) });
+      const checked = taskMatch[2].toLowerCase() === "x";
+      if (!lineOverlaps) {
+        decos.push({ from: bracketPos, to: bracketPos + 3, deco: Decoration.replace({ widget: new TaskCheckboxWidget(bracketPos, checked), block: false }) });
+        if (checked) {
+          decos.push({ from: bracketPos + 4, to: line.to, deco: Decoration.mark({ class: "cm-md-task-done" }) });
+        }
+      } else {
+        decos.push({ from: bracketPos, to: bracketPos + 3, deco: Decoration.mark({ class: "cm-md-task-marker" }) });
+      }
     }
   }
 

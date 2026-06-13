@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { EditorView, keymap, highlightActiveLine, ViewUpdate, drawSelection } from "@codemirror/view";
-import { EditorState, type Extension } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { EditorState, Transaction, type Extension } from "@codemirror/state";
+import { defaultKeymap, history, historyKeymap, indentWithTab, redo } from "@codemirror/commands";
 import { syntaxHighlighting } from "@codemirror/language";
 
 // Module-level scroll-to-heading — accessible from any component
@@ -17,6 +17,7 @@ import { STYLE_ID, CSS, woxHighlightStyle } from "./styles";
 import { setEditorFocused, isEditorFocused, focusEffect, previewField, setVaultPath } from "./decorations";
 import { cmTheme, darkTheme } from "./theme";
 import { appInvoke } from "../../bridge";
+import type { LineRevealRequest } from "../../types";
 
 // ── Props ───────────────────────────────────────────────────
 type ScrollToHeadingFn = (text: string) => void;
@@ -31,6 +32,7 @@ type Props = {
   onClickTag?: (tag: string) => void;
   onScrollToHeading?: (fn: ScrollToHeadingFn) => void;
   onCursorChange?: (line: number, col: number) => void;
+  revealLineRequest?: LineRevealRequest | null;
   vaultPath?: string;
 };
 
@@ -38,7 +40,7 @@ type Props = {
 export function CMLivePreview({
   content, contentWidth, contentFontSize, noteTitles,
   onContentChange, onPasteImage, onSave, onClickWikiLink, onClickTag,
-  onScrollToHeading, onCursorChange, vaultPath,
+  onScrollToHeading, onCursorChange, revealLineRequest, vaultPath,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -86,7 +88,6 @@ export function CMLivePreview({
       const word = ctx.matchBefore(/\[\[[^\]]*$/);
       if (!word) return null;
       const typed = word.text.slice(2);
-      if (!typed.trim()) return null;
 
       try {
         const results = await appInvoke<{title: string; path: string; score: number}[]>(
@@ -107,15 +108,22 @@ export function CMLivePreview({
       // Fallback: local includes matching
       const q = typed.toLowerCase();
       const matches = titlesRef.current
-        .filter((t) => t.toLowerCase().includes(q))
+        .filter((t) => !q || t.toLowerCase().includes(q))
         .slice(0, 20)
         .map((t) => ({ label: t, type: "text" as const, apply: t + "]]", detail: "note" }));
       return matches.length ? { from: word.from + 2, options: matches, filter: false } : null;
     };
 
     const markdownKeymap = keymap.of([
+      { key: "Enter", run: continueMarkdownList },
+      { key: "Tab", run: indentMarkdownList },
+      { key: "Shift-Tab", run: outdentMarkdownList },
       { key: "Mod-b", run: wrapInline("**") },
       { key: "Mod-i", run: wrapInline("*") },
+      { key: "Mod-`", run: wrapInline("`") },
+      { key: "Mod-k", run: wrapMarkdownLink },
+      { key: "Mod-Enter", run: toggleTaskLine },
+      { key: "Mod-Shift-h", run: wrapInline("==") },
       { key: "Mod-Shift-", run: wrapInline("") },
       { key: "Mod-Shift-s", run: wrapInline("~~") },
     ]);
@@ -129,6 +137,10 @@ export function CMLivePreview({
       syntaxHighlighting(woxHighlightStyle),
       EditorView.lineWrapping, closeBrackets(),
       autocompletion({ override: [wikiCompletion] }),
+      keymap.of([
+        { key: "Mod-Shift-z", run: redo },
+        { key: "Mod-y", run: redo },
+      ]),
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       markdownKeymap,
       search({ top: true }),
@@ -151,6 +163,51 @@ export function CMLivePreview({
         }
       }),
       EditorView.domEventHandlers({
+        keydown: (event: KeyboardEvent, view: EditorView) => {
+          if (handlePairTyping(event, view)) return true;
+          return false;
+        },
+        dragover: (event: DragEvent) => {
+          const files = Array.from(event.dataTransfer?.items ?? []);
+          if (files.some((item) => item.kind === "file" && item.type.startsWith("image/"))) {
+            event.preventDefault();
+            if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+            view.dom.classList.add("cm-image-drop-target");
+            return true;
+          }
+          return false;
+        },
+        dragleave: (_event: DragEvent, view: EditorView) => {
+          view.dom.classList.remove("cm-image-drop-target");
+          return false;
+        },
+        drop: (event: DragEvent, view: EditorView) => {
+          view.dom.classList.remove("cm-image-drop-target");
+          const onPasteImage = callbacksRef.current.onPasteImage;
+          if (!onPasteImage) return false;
+          const files = Array.from(event.dataTransfer?.files ?? []).filter((file) => file.type.startsWith("image/"));
+          if (files.length === 0) return false;
+          event.preventDefault();
+          const dropPos = view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.selection.main.head;
+          void (async () => {
+            const inserts: string[] = [];
+            for (const file of files) {
+              try {
+                const dataUrl = await readFileAsDataUrl(file);
+                const path = await onPasteImage(dataUrl);
+                if (path) inserts.push(`![](${path})`);
+              } catch { /* ignore unreadable image */ }
+            }
+            if (inserts.length > 0) {
+              view.dispatch({
+                changes: { from: dropPos, insert: inserts.join("\n") + "\n" },
+                selection: { anchor: dropPos + inserts.join("\n").length + 1 },
+              });
+              view.focus();
+            }
+          })();
+          return true;
+        },
         click: (event: MouseEvent, view: EditorView) => {
           const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
           if (pos === null) return false;
@@ -233,6 +290,18 @@ export function CMLivePreview({
                 };
                 r.readAsDataURL(blob);
               }
+              return true;
+            }
+          }
+          const pastedText = event.clipboardData?.getData("text/plain")?.trim();
+          const selection = view.state.selection.main;
+          if (pastedText && /^https?:\/\/\S+$/i.test(pastedText) && !selection.empty) {
+            const selectedText = view.state.doc.sliceString(selection.from, selection.to);
+            if (selectedText && !/^\s*$/.test(selectedText)) {
+              event.preventDefault();
+              view.dispatch({
+                changes: { from: selection.from, to: selection.to, insert: `[${selectedText}](${pastedText})` },
+              });
               return true;
             }
           }
@@ -343,6 +412,7 @@ export function CMLivePreview({
             v2.dispatch({
               changes: { from: 0, to: cur2.length, insert: latest },
               selection: { anchor: 0 },
+              annotations: Transaction.addToHistory.of(false),
             });
           } catch { /* view might be mid-update */ }
         }
@@ -350,6 +420,22 @@ export function CMLivePreview({
       }, 0);
     }
   }, [content]);
+
+  useEffect(() => {
+    if (!revealLineRequest) return;
+    const id = window.setTimeout(() => {
+      const v = viewRef.current;
+      if (!v) return;
+      const lineNumber = Math.max(1, Math.min(revealLineRequest.line, v.state.doc.lines));
+      const line = v.state.doc.line(lineNumber);
+      v.focus();
+      v.dispatch({
+        selection: { anchor: line.from },
+        effects: EditorView.scrollIntoView(line.from, { y: "center", yMargin: 80 }),
+      });
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [revealLineRequest?.nonce, revealLineRequest?.line]);
 
     // Use CSS custom property for content width (avoids CodeMirror DOM observer conflicts)
   useEffect(() => {
@@ -372,7 +458,8 @@ function wrapInline(marker: string) {
     const sel = state.selection.main;
     const text = state.doc.sliceString(sel.from, sel.to);
     if (text) {
-      const insert = marker + text + marker;
+      const hasMarker = marker && text.startsWith(marker) && text.endsWith(marker);
+      const insert = hasMarker ? text.slice(marker.length, text.length - marker.length) : marker + text + marker;
       view.dispatch({
         changes: { from: sel.from, to: sel.to, insert },
         selection: { anchor: sel.from, head: sel.from + insert.length },
@@ -387,4 +474,174 @@ function wrapInline(marker: string) {
     }
     return true;
   };
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function wrapMarkdownLink(view: EditorView): boolean {
+  const { state } = view;
+  const sel = state.selection.main;
+  const text = state.doc.sliceString(sel.from, sel.to);
+  const insert = text ? `[${text}]()` : `[]()`;
+  const cursor = text ? sel.from + insert.length - 1 : sel.from + 1;
+  view.dispatch({
+    changes: { from: sel.from, to: sel.to, insert },
+    selection: { anchor: cursor },
+  });
+  return true;
+}
+
+const PAIRS: Record<string, string> = {
+  "(": ")",
+  "[": "]",
+  "{": "}",
+  "\"": "\"",
+  "'": "'",
+  "`": "`",
+};
+
+const CLOSERS = new Set(Object.values(PAIRS));
+
+function handlePairTyping(event: KeyboardEvent, view: EditorView): boolean {
+  if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return false;
+  const key = event.key;
+  if (key.length !== 1) return false;
+  const { state } = view;
+  const sel = state.selection.main;
+
+  if (!sel.empty && (PAIRS[key] || key === "*")) {
+    const marker = key === "*" ? "*" : key;
+    const close = key === "*" ? "*" : PAIRS[key];
+    const text = state.doc.sliceString(sel.from, sel.to);
+    event.preventDefault();
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert: marker + text + close },
+      selection: { anchor: sel.from + marker.length, head: sel.to + marker.length },
+    });
+    return true;
+  }
+
+  if (PAIRS[key]) {
+    event.preventDefault();
+    const close = PAIRS[key];
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert: key + close },
+      selection: { anchor: sel.from + key.length },
+    });
+    return true;
+  }
+
+  if (CLOSERS.has(key)) {
+    const next = state.doc.sliceString(sel.from, sel.from + 1);
+    if (sel.empty && next === key) {
+      event.preventDefault();
+      view.dispatch({ selection: { anchor: sel.from + 1 } });
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function toggleTaskLine(view: EditorView): boolean {
+  const { state } = view;
+  const pos = state.selection.main.head;
+  const line = state.doc.lineAt(pos);
+  const task = line.text.match(/^(\s*[-*+]\s+\[)([ xX])(\]\s+)/);
+  if (task) {
+    const markFrom = line.from + task[1].length;
+    view.dispatch({
+      changes: { from: markFrom, to: markFrom + 1, insert: task[2].toLowerCase() === "x" ? " " : "x" },
+    });
+    return true;
+  }
+
+  const list = line.text.match(/^(\s*[-*+]\s+)(.*)$/);
+  if (list) {
+    view.dispatch({
+      changes: { from: line.from, to: line.to, insert: `${list[1]}[ ] ${list[2]}` },
+      selection: { anchor: Math.min(line.to + 4, state.selection.main.head + 4) },
+    });
+    return true;
+  }
+
+  const indent = line.text.match(/^\s*/)?.[0] ?? "";
+  view.dispatch({
+    changes: { from: line.from, to: line.to, insert: `${indent}- [ ] ${line.text.slice(indent.length)}` },
+    selection: { anchor: state.selection.main.head + 6 },
+  });
+  return true;
+}
+
+function continueMarkdownList(view: EditorView): boolean {
+  const { state } = view;
+  const sel = state.selection.main;
+  if (!sel.empty) return false;
+
+  const line = state.doc.lineAt(sel.from);
+  const beforeCursor = line.text.slice(0, sel.from - line.from);
+  const unordered = beforeCursor.match(/^(\s*)([-*+])\s+(\[[ xX]\]\s+)?/);
+  const ordered = beforeCursor.match(/^(\s*)(\d+)([.)])\s+/);
+  if (!unordered && !ordered) return false;
+
+  const markerText = unordered?.[0] ?? ordered?.[0] ?? "";
+  const hasOnlyMarker = line.text.slice(markerText.length).trim() === "";
+  if (hasOnlyMarker) {
+    const indent = unordered?.[1] ?? ordered?.[1] ?? "";
+    view.dispatch({
+      changes: { from: line.from + indent.length, to: line.to, insert: "" },
+      selection: { anchor: line.from + indent.length },
+    });
+    return true;
+  }
+
+  const insert = unordered
+    ? `\n${unordered[1]}${unordered[2]} ${unordered[3] ? "[ ] " : ""}`
+    : `\n${ordered![1]}${Number(ordered![2]) + 1}${ordered![3]} `;
+  view.dispatch({
+    changes: { from: sel.from, to: sel.to, insert },
+    selection: { anchor: sel.from + insert.length },
+  });
+  return true;
+}
+
+function indentMarkdownList(view: EditorView): boolean {
+  return changeMarkdownListIndent(view, "indent");
+}
+
+function outdentMarkdownList(view: EditorView): boolean {
+  return changeMarkdownListIndent(view, "outdent");
+}
+
+function changeMarkdownListIndent(view: EditorView, direction: "indent" | "outdent"): boolean {
+  const { state } = view;
+  const sel = state.selection.main;
+  const startLine = state.doc.lineAt(sel.from);
+  const endLine = state.doc.lineAt(sel.to);
+  const changes: { from: number; to?: number; insert: string }[] = [];
+
+  for (let lineNumber = startLine.number; lineNumber <= endLine.number; lineNumber++) {
+    const line = state.doc.line(lineNumber);
+    if (!/^(\s*)(?:[-*+]\s+|\d+[.)]\s+)/.test(line.text)) continue;
+    if (direction === "indent") {
+      changes.push({ from: line.from, insert: "  " });
+      continue;
+    }
+    if (line.text.startsWith("  ")) {
+      changes.push({ from: line.from, to: line.from + 2, insert: "" });
+    } else if (line.text.startsWith("\t")) {
+      changes.push({ from: line.from, to: line.from + 1, insert: "" });
+    }
+  }
+
+  if (changes.length === 0) return false;
+  view.dispatch({ changes });
+  return true;
 }

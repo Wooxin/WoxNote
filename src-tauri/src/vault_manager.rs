@@ -27,6 +27,7 @@ pub struct SearchResult {
     pub path: String,
     pub title: String,
     pub snippet: String,
+    pub line: usize,
     pub score: f64,
 }
 
@@ -338,10 +339,15 @@ impl VaultManager {
 
         let results: Vec<SearchResult> = stmt
             .query_map(params![fts_query], |row| {
+                let path: String = row.get(0)?;
+                let line = self
+                    .find_first_match_line(&fts.vault_path, &path, query)
+                    .unwrap_or(1);
                 Ok(SearchResult {
-                    path: row.get(0)?,
+                    path,
                     title: row.get(1)?,
                     snippet: row.get(2)?,
+                    line,
                     score: row.get::<_, f64>(3)?,
                 })
             })
@@ -350,6 +356,31 @@ impl VaultManager {
             .collect();
 
         Ok(results)
+    }
+
+    fn find_first_match_line(
+        &self,
+        vault_path: &Path,
+        relative_path: &str,
+        query: &str,
+    ) -> Option<usize> {
+        let needle = query.trim().to_lowercase();
+        if needle.is_empty() {
+            return Some(1);
+        }
+        let terms: Vec<&str> = needle
+            .split_whitespace()
+            .filter(|term| !term.is_empty())
+            .collect();
+        let content = fs::read_to_string(vault_path.join(relative_path)).ok()?;
+        content
+            .lines()
+            .position(|line| {
+                let line = line.to_lowercase();
+                line.contains(&needle) || terms.iter().any(|term| line.contains(term))
+            })
+            .map(|index| index + 1)
+            .or(Some(1))
     }
 
     // ── Link graph queries ───────────────────────────────────
