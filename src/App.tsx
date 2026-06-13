@@ -70,25 +70,13 @@ function AppInner() {
     const next = new Set(app.collapsedDirs);
     let changed = false;
 
-    // First launch: collapse all directories, then expand to selected note
-    if (!app.vaultInitialized) {
-      for (const dir of dirPaths) next.add(dir);
-      if (vault.selectedPath) {
-        const parts = vault.selectedPath.split("/");
-        for (let i = 1; i < parts.length; i++) {
-          next.delete(parts.slice(0, i).join("/"));
-        }
-      }
-      app.setCollapsedDirs(next);
-      app.setVaultInitialized(true);
-      return;
-    }
-
-    // Subsequent: only collapse truly NEW directories (don't touch user-opened ones)
+    // Only collapse directories that didn't exist before — never touch user-opened ones
     for (const dir of dirPaths) {
       if (!next.has(dir)) { next.add(dir); changed = true; }
     }
     if (changed) app.setCollapsedDirs(next);
+
+    if (!app.vaultInitialized) app.setVaultInitialized(true);
   }, [app.vaultInitialized, vault.entries]);
 
   useKeyboardShortcuts({
