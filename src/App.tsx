@@ -67,16 +67,20 @@ function AppInner() {
     const dirPaths = vault.entries.filter((e) => e.isDir).map((e) => e.path);
     if (dirPaths.length === 0) return;
 
+    // First launch: collapse all directories
+    if (!app.vaultInitialized) {
+      app.setCollapsedDirs(new Set(dirPaths));
+      app.setVaultInitialized(true);
+      return;
+    }
+
+    // Subsequent: only collapse truly new directories
     const next = new Set(app.collapsedDirs);
     let changed = false;
-
-    // Only collapse directories that didn't exist before — never touch user-opened ones
     for (const dir of dirPaths) {
       if (!next.has(dir)) { next.add(dir); changed = true; }
     }
     if (changed) app.setCollapsedDirs(next);
-
-    if (!app.vaultInitialized) app.setVaultInitialized(true);
   }, [app.vaultInitialized, vault.entries]);
 
   useKeyboardShortcuts({
