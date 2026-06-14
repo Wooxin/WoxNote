@@ -40,6 +40,8 @@ pub struct UserSettings {
     pub window_maximized: bool,
     pub open_tabs_json: String,
     pub selected_path: String,
+    pub bookmarks_json: String,
+    pub pinned_tabs_json: String,
     pub ui_font: String,
     pub code_font: String,
     pub collapsed_dirs_json: String,

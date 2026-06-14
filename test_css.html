@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style id="cm-md-live-style">
+/* ═══════════════════════════════════════════════════════════
+   Obsidian-style Live Preview CSS
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Core editor ─────────────────────────────────────────── */
+.cm-editor { height: 100% !important; }
+.cm-scroller { overflow: auto !important; height: 100% !important; }
+
+/* ── Editor content font ─────────────────────────────────── */
+.cm-editor .cm-content,
+.cm-editor .cm-line {
+  font-family: var(--ui-font, "HarmonyOS Sans", sans-serif) !important;
+}
+
+/* Aggressive reset: kill ANY text-decoration on heading-related classes */
+.cm-editor .tok-heading,
+.cm-editor .tok-heading1,
+.cm-editor .tok-heading2,
+.cm-editor .tok-heading3,
+.cm-editor .tok-heading4,
+.cm-editor .tok-heading5,
+.cm-editor .tok-heading6,
+.cm-editor [class*="tok-heading"],
+.cm-editor .cm-md-heading-text,
+.cm-editor .cm-md-heading-1,
+.cm-editor .cm-md-heading-2,
+.cm-editor .cm-md-heading-3,
+.cm-editor .cm-md-heading-4,
+.cm-editor .cm-md-heading-5,
+.cm-editor .cm-md-heading-6 {
+  text-decoration: none !important;
+  text-decoration-line: none !important;
+  border-bottom: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.cm-md-heading-text {
+  font-weight: 700 !important;
+  line-height: 1.35;
+  display: inline;
+}
+.cm-md-heading-1 .cm-md-heading-text,
+.cm-md-heading-1 { font-size: 2em !important; color: #8bbd25 !important; }
+.cm-md-heading-2 .cm-md-heading-text,
+.cm-md-heading-2 { font-size: 1.7em !important; color: #4caf50 !important; }
+.cm-md-heading-3 .cm-md-heading-text,
+.cm-md-heading-3 { font-size: 1.5em !important; color: #3baea0 !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   INLINE FORMATTING
+   ═══════════════════════════════════════════════════════════ */
+.cm-editor .cm-md-bold { font-weight: 700; color: #E5E9F0; }
+.cm-editor .cm-md-italic { font-style: italic; color: #E5E9F0; }
+
+/* ═══════════════════════════════════════════════════════════
+   TABLES
+   ═══════════════════════════════════════════════════════════ */
+.cm-editor .cm-md-table-header {
+  background: rgba(94,129,172,0.18) !important;
+  font-weight: 600;
+}
+.cm-editor .cm-md-table-sep-mark {
+  background: transparent !important;
+  color: #434C5E !important;
+  font-weight: 700;
+}
+.cm-editor .cm-md-table-row-even {
+  background: rgba(216,222,233,0.03) !important;
+}
+.cm-editor .cm-md-table-row-odd {
+  background: transparent !important;
+}
+.cm-editor .cm-md-table-pipe {
+  color: #4C566A !important;
+  opacity: 0.6 !important;
+  font-weight: 300 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MARKER DIMMING
+   ═══════════════════════════════════════════════════════════ */
+.cm-editor .cm-md-marker-dim {
+  opacity: 0.65 !important;
+  color: #8892a4 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CODE BLOCKS
+   ═══════════════════════════════════════════════════════════ */
+.cm-editor .cm-md-fenced-line {
+  background: rgba(46,52,64,0.6);
+  border-left: 3px solid #434C5E;
+  padding: 2px 0 2px 12px;
+  font-family: "Cascadia Code", monospace !important;
+  font-size: 0.9em;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BLOCKQUOTES
+   ═══════════════════════════════════════════════════════════ */
+.cm-editor .cm-md-blockquote {
+  border-left: 3px solid #4C566A;
+  padding-left: 1em;
+  opacity: 0.9;
+  color: #d8dee9;
+}
+</style>
+</head>
+<body style="background:#2E3440;color:#d8dee9;font-family:'HarmonyOS Sans',sans-serif;padding:40px;">
+<h2>CSS Test - Heading Underlines</h2>
+<div class="cm-editor" style="background:#2E3440;padding:20px;">
+  <div class="cm-line cm-md-heading-1"><span class="cm-md-heading-text">Heading 1 - Should have NO underline</span></div>
+  <div class="cm-line cm-md-heading-2"><span class="cm-md-heading-text">Heading 2 - Should have NO underline</span></div>
+  <div class="cm-line tok-heading">tok-heading - Should have NO underline</div>
+  <div class="cm-line cm-md-marker-dim"># Marker dim test - opacity 0.65</div>
+  <div class="cm-line cm-md-fenced-line">code block line test</div>
+  <div class="cm-line cm-md-blockquote">&gt; blockquote test</div>
+  <div class="cm-line cm-md-table-header">| Table Header | Test |</div>
+  <div class="cm-line cm-md-table-row-even">| <span class="cm-md-table-pipe">|</span> Row Even <span class="cm-md-table-pipe">|</span></div>
+  <div class="cm-line cm-md-table-row-odd">| Row Odd |</div>
+</div>
+</body>
+</html>

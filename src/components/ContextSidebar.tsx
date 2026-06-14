@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
-import { FileArchive, FileText, Link, List, SquarePen } from "lucide-react";
+import { FileArchive, FileText, Link, List, Rows3, SquarePen } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 import { titleFromPath } from "../utils/helpers";
@@ -29,6 +29,8 @@ function formatTime(ts: number): string {
 }
 
 type TocItem = { level: number; text: string };
+type PropertyValue = string | string[] | number | boolean;
+type PropertyEntry = { key: string; value: PropertyValue };
 
 function extractToc(content: string): TocItem[] {
   // Strip fenced code blocks so #comments in code aren't treated as headings
@@ -46,6 +48,71 @@ function wikiTarget(link: string) {
   return link.split("|")[0].split("#")[0].trim().toLowerCase();
 }
 
+function stripYamlQuotes(value: string) {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function parseScalar(value: string): PropertyValue {
+  const clean = stripYamlQuotes(value);
+  if (/^(true|false)$/i.test(clean)) return clean.toLowerCase() === "true";
+  if (/^-?\d+(?:\.\d+)?$/.test(clean)) return Number(clean);
+  return clean;
+}
+
+function parseInlineArray(value: string) {
+  const inner = value.trim().slice(1, -1);
+  if (!inner.trim()) return [];
+  return inner.split(",").map((item) => stripYamlQuotes(item).trim()).filter(Boolean);
+}
+
+function extractProperties(content: string): PropertyEntry[] {
+  if (!content.startsWith("---")) return [];
+  const end = content.indexOf("\n---", 3);
+  if (end < 0) return [];
+  const lines = content.slice(3, end).split(/\r?\n/);
+  const entries: PropertyEntry[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const match = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (!match) continue;
+    const key = match[1];
+    const raw = match[2].trim();
+    if (!raw) {
+      const values: string[] = [];
+      while (index + 1 < lines.length) {
+        const next = lines[index + 1].match(/^\s*-\s+(.+)$/);
+        if (!next) break;
+        values.push(stripYamlQuotes(next[1]));
+        index += 1;
+      }
+      entries.push({ key, value: values });
+      continue;
+    }
+    entries.push({ key, value: raw.startsWith("[") && raw.endsWith("]") ? parseInlineArray(raw) : parseScalar(raw) });
+  }
+
+  return entries;
+}
+
+function displayPropertyValue(value: PropertyValue) {
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return String(value);
+}
+
+function propertySearchQuery(key: string, value: string) {
+  const cleanValue = value.replace(/^#/, "").trim();
+  return key.toLowerCase() === "tags" ? `tag:${cleanValue}` : `${key}:${cleanValue}`;
+}
+
+function parentPath(path: string) {
+  return path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : path;
+}
+
 
 
 type Props = Record<string, never>;
@@ -61,6 +128,7 @@ export function ContextSidebar(_props: Props) {
     void appInvoke("open_in_explorer", { path: targetPath });
   };
   const toc = useMemo(() => extractToc(vault.content), [vault.content]);
+  const properties = useMemo(() => extractProperties(vault.content), [vault.content]);
   const [rustToc, setRustToc] = useState<TocItem[] | null>(null);
 
   useEffect(() => {
@@ -93,7 +161,39 @@ export function ContextSidebar(_props: Props) {
             <span>{app.t.words}</span><span>{wordCount(vault.content)}</span>
             <span>{app.t.reading}</span><span>{readingTime(wordCount(vault.content))}</span>
             <span>{app.t.size}</span><span>{formatSize(vault.selectedEntry.size)}</span>
+            <span>{app.t.path}</span>
+            <button className="file-info-filter" onClick={() => vault.setGlobalSearch(`path:${parentPath(vault.selectedEntry!.path)}`)}>
+              {parentPath(vault.selectedEntry.path)}
+            </button>
             {vault.selectedEntry.modified > 0 && <><span>{app.t.modifiedTime}</span><span>{formatTime(vault.selectedEntry.modified)}</span></>}
+          </div>
+        </section>
+      )}
+
+      {properties.length > 0 && (
+        <section className="context-section">
+          <div className="context-title"><Rows3 size={16} /><span>{app.t.properties}</span></div>
+          <div className="property-list">
+            {properties.slice(0, 16).map((property) => (
+              <div key={property.key} className="property-row">
+                <span className="property-key">{property.key}</span>
+                {Array.isArray(property.value) ? (
+                  <div className="property-values">
+                    {property.value.slice(0, 10).map((item) => {
+                      return (
+                        <button key={item} className="property-chip" onClick={() => vault.setGlobalSearch(propertySearchQuery(property.key, item))}>
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <button className="property-value property-value-button" onClick={() => vault.setGlobalSearch(propertySearchQuery(property.key, displayPropertyValue(property.value)))}>
+                    {displayPropertyValue(property.value)}
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         </section>
       )}

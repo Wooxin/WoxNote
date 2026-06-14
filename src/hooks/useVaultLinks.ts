@@ -42,6 +42,42 @@ function normalizeWikiTarget(title: string) {
   return title.split("|")[0].split("#")[0].trim();
 }
 
+function stripYamlQuotes(value: string) {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function parseAliases(content: string): string[] {
+  if (!content.startsWith("---")) return [];
+  const end = content.indexOf("\n---", 3);
+  if (end < 0) return [];
+  const lines = content.slice(3, end).split(/\r?\n/);
+  const aliases: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^aliases:\s*(.*)$/i);
+    if (!match) continue;
+    const raw = match[1].trim();
+    if (raw.startsWith("[") && raw.endsWith("]")) {
+      aliases.push(...raw.slice(1, -1).split(",").map((item) => stripYamlQuotes(item)).filter(Boolean));
+      continue;
+    }
+    if (raw) {
+      aliases.push(stripYamlQuotes(raw));
+      continue;
+    }
+    while (index + 1 < lines.length) {
+      const next = lines[index + 1].match(/^\s*-\s+(.+)$/);
+      if (!next) break;
+      aliases.push(stripYamlQuotes(next[1]));
+      index += 1;
+    }
+  }
+  return aliases.map((alias) => alias.trim()).filter(Boolean);
+}
+
 export function useVaultLinks(
   vaultPath: string,
   selectedPath: string,
@@ -55,6 +91,28 @@ export function useVaultLinks(
   const [backlinks, setBacklinks] = useState<BacklinkEntry[]>([]);
   const [unlinkedMentions, setUnlinkedMentions] = useState<MentionEntry[]>([]);
   const [forwardLinks, setForwardLinks] = useState<string[]>([]);
+  const [aliasTargets, setAliasTargets] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!vaultPath || notes.length === 0) {
+      setAliasTargets({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const next: Record<string, string> = {};
+      await Promise.all(notes.slice(0, 500).map(async (note) => {
+        try {
+          const content = await appInvoke<string>("read_text_file", { root: vaultPath, relativePath: note.path });
+          for (const alias of parseAliases(content)) {
+            next[alias.toLowerCase()] = note.path;
+          }
+        } catch { /* ignore unreadable note */ }
+      }));
+      if (!cancelled) setAliasTargets(next);
+    })();
+    return () => { cancelled = true; };
+  }, [vaultPath, notes, refreshKey]);
 
   // Fetch backlinks / forward links when selection changes
   useEffect(() => {
@@ -105,14 +163,15 @@ export function useVaultLinks(
     const targetTitle = normalizeWikiTarget(title);
     if (!targetTitle) return;
     const normalized = targetTitle.toLowerCase();
-    const target = notes.find((entry) => titleFromPath(entry.path).toLowerCase() === normalized);
+    const aliasPath = aliasTargets[normalized];
+    const target = notes.find((entry) => entry.path === aliasPath || titleFromPath(entry.path).toLowerCase() === normalized);
     if (target) {
       void handleSelectFile(target);
       return;
     }
     statusSetter(`Creating [[${targetTitle}]]`);
     void createMissingLink(targetTitle);
-  }, [createMissingLink, handleSelectFile, notes, statusSetter]);
+  }, [aliasTargets, createMissingLink, handleSelectFile, notes, statusSetter]);
 
   return {
     backlinks,

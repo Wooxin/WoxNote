@@ -363,6 +363,8 @@ button {
 
 .vault-suggestions span,
 .tree-row span,
+.bookmark-row span,
+.recent-row span,
 .quick-open span,
 .tab span,
 .context-section button,
@@ -395,14 +397,68 @@ button {
   text-transform: uppercase;
 }
 
+.tree-title.compact {
+  padding-bottom: 6px;
+}
+
 .tree-title button {
   width: 24px;
   height: 24px;
 }
 
+.bookmarks-section,
+.recent-section {
+  display: grid;
+  gap: 2px;
+  border-bottom: 1px solid rgba(216, 222, 233, 0.06);
+  margin: 0 0 10px;
+  padding: 0 8px 10px;
+}
+
+.bookmark-list,
+.recent-list {
+  display: grid;
+  gap: 2px;
+}
+
+.bookmark-row,
+.recent-row {
+  display: grid;
+  grid-template-columns: 14px 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--nord4);
+  cursor: pointer;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.bookmark-row svg:first-child {
+  color: var(--nord13);
+}
+
+.recent-row {
+  grid-template-columns: 16px minmax(0, 1fr);
+}
+
+.recent-row svg {
+  color: var(--nord8);
+}
+
+.bookmark-row:hover,
+.bookmark-row.active,
+.recent-row:hover,
+.recent-row.active {
+  color: var(--nord5);
+  background: var(--nord3);
+}
+
 .file-filter {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-columns: 16px minmax(0, 1fr) 20px;
   align-items: center;
   gap: 7px;
   height: 32px;
@@ -412,6 +468,56 @@ button {
   background: var(--nord0);
   padding: 0 8px;
   color: var(--nord3);
+}
+
+.file-filter button {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--nord3);
+  cursor: pointer;
+  padding: 0;
+}
+
+.file-filter button:hover {
+  color: var(--nord5);
+  background: rgba(216, 222, 233, 0.08);
+}
+
+.search-active-filter {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: -2px 12px 8px;
+  color: #8f9aaa;
+  font-size: 11px;
+}
+
+.search-active-filter span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-active-filter small {
+  color: #6f7a88;
+  font-size: 10px;
+}
+
+.search-empty-state {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 12px 8px;
+  border: 1px dashed rgba(216, 222, 233, 0.11);
+  border-radius: 7px;
+  color: #6f7a88;
+  padding: 9px 10px;
+  font-size: 12px;
 }
 
 .file-tree {
@@ -524,6 +630,18 @@ button {
   background: var(--nord0);
 }
 
+.tab.pinned {
+  min-width: 96px;
+  border-bottom: 2px solid rgba(235, 203, 139, 0.65);
+}
+
+.tab-pin {
+  flex: 0 0 auto;
+  color: var(--nord13);
+  opacity: 0.9 !important;
+  padding: 0 !important;
+}
+
 .tab svg {
   flex: 0 0 auto;
   opacity: 0;
@@ -542,11 +660,17 @@ button {
 .note-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   min-width: 0;
   gap: 14px;
   border-bottom: 1px solid rgba(216, 222, 233, 0.05);
   padding: 0 16px;
+}
+
+.note-nav {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
 }
 
 .note-title {
@@ -1939,6 +2063,83 @@ textarea/* === Markdown Live Editor === */
   text-align: right;
 }
 
+.file-info-filter {
+  justify-content: flex-end;
+  min-height: auto !important;
+  background: transparent !important;
+  color: var(--text-tertiary, #b6c0ca) !important;
+  padding: 0 !important;
+  text-align: right !important;
+}
+
+.file-info-filter:hover {
+  color: #d9e2ea !important;
+  text-decoration: underline;
+}
+
+.property-list {
+  display: grid;
+  gap: 5px;
+}
+
+.property-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.property-key {
+  overflow: hidden;
+  color: var(--text-muted, #7f8a96);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.property-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-tertiary, #b6c0ca);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.property-value-button {
+  justify-content: flex-end;
+  min-height: auto !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.property-value-button:hover {
+  color: #d9e2ea;
+  text-decoration: underline;
+}
+
+.property-values {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.property-chip {
+  min-height: 22px;
+  max-width: 100%;
+  border-radius: 999px;
+  background: rgba(136, 192, 208, 0.12);
+  color: #9bd3e3;
+  padding: 0 7px;
+}
+
+.property-chip:hover {
+  background: rgba(136, 192, 208, 0.2);
+}
+
 .context-section button,
 .system-open {
   min-height: 26px;
@@ -2649,8 +2850,22 @@ textarea/* === Markdown Live Editor === */
 .theme-light .vault-header p,
 .theme-light .note-title small,
 .theme-light .muted,
+.theme-light .property-key,
 .theme-light .empty-tab,
 .theme-light .quick-open kbd {
+  color: #697481;
+}
+
+.theme-light .property-value {
+  color: #3d4855;
+}
+
+.theme-light .file-info-filter,
+.theme-light .property-value-button {
+  color: #3d4855 !important;
+}
+
+.theme-light .search-active-filter {
   color: #697481;
 }
 
@@ -2692,6 +2907,11 @@ textarea/* === Markdown Live Editor === */
   background: #edf1f5;
 }
 
+.theme-light .property-chip {
+  color: #0f5f7a;
+  background: #dceff5;
+}
+
 .theme-light .task-panel-header h2 {
   color: #1e2732;
 }
@@ -2721,6 +2941,8 @@ textarea/* === Markdown Live Editor === */
 .theme-light .mode-switch button:hover,
 .theme-light .mode-switch button.active,
 .theme-light .tree-row:hover,
+.theme-light .bookmark-row:hover,
+.theme-light .bookmark-row.active,
 .theme-light .tree-row.active,
 .theme-light .tab.active,
 .theme-light .tools-row button {

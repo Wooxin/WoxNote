@@ -28,6 +28,8 @@ export function useSettings() {
   const [collapsedDirs, setCollapsedDirsState] = useState<Set<string>>(new Set());
   const [openTabs, setOpenTabsState] = useState<string[]>([]);
   const [selectedPath, setSelectedPathState] = useState("");
+  const [bookmarks, setBookmarksState] = useState<string[]>([]);
+  const [pinnedTabs, setPinnedTabsState] = useState<string[]>([]);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [startup, _setStartup] = useState<StartupInfo | null>(null);
 
@@ -74,6 +76,8 @@ export function useSettings() {
   collapsedDirsRef.current = collapsedDirs;
   const openTabsRef = useRef(openTabs); openTabsRef.current = openTabs;
   const selectedPathRef = useRef(selectedPath); selectedPathRef.current = selectedPath;
+  const bookmarksRef = useRef(bookmarks); bookmarksRef.current = bookmarks;
+  const pinnedTabsRef = useRef(pinnedTabs); pinnedTabsRef.current = pinnedTabs;
   const doSave = useCallback(async (overrides?: Record<string, unknown>) => {
     const s = {
       vaultsJson: JSON.stringify(vaultsRef.current),
@@ -100,6 +104,8 @@ export function useSettings() {
       collapsedDirsJson: JSON.stringify(Array.from(collapsedDirsRef.current)),
       openTabsJson: JSON.stringify(openTabsRef.current),
       selectedPath: selectedPathRef.current,
+      bookmarksJson: JSON.stringify(bookmarksRef.current),
+      pinnedTabsJson: JSON.stringify(pinnedTabsRef.current),
       ...overrides,
     };
     try {
@@ -149,6 +155,14 @@ export function useSettings() {
         setOpenTabsState(tabs);
       } catch { setOpenTabsState([]); }
       setSelectedPathState(settings.selectedPath || "");
+      try {
+        const savedBookmarks = JSON.parse(settings.bookmarksJson || "[]") as string[];
+        setBookmarksState(savedBookmarks);
+      } catch { setBookmarksState([]); }
+      try {
+        const savedPinnedTabs = JSON.parse(settings.pinnedTabsJson || "[]") as string[];
+        setPinnedTabsState(savedPinnedTabs);
+      } catch { setPinnedTabsState([]); }
       setSettingsLoaded(true);
     })();
   }, []);
@@ -160,7 +174,7 @@ export function useSettings() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(doSave, 300);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [theme, language, showQuickSettings, enableKeyboardShortcuts, sidebarCollapsed, vaultInitialized, contentWidth, fontSizeGlobal, uiFontSize, contentFontSize, shortcutPalette, shortcutNewNote, shortcutSave, shortcutCloseTab, themeFile, toastPosition, uiFont, codeFont, collapsedDirs, settingsLoaded, doSave]);
+  }, [theme, language, showQuickSettings, enableKeyboardShortcuts, sidebarCollapsed, vaultInitialized, contentWidth, fontSizeGlobal, uiFontSize, contentFontSize, shortcutPalette, shortcutNewNote, shortcutSave, shortcutCloseTab, themeFile, toastPosition, uiFont, codeFont, collapsedDirs, bookmarks, pinnedTabs, settingsLoaded, doSave]);
 
   // Flush on unload (synchronous via navigator.sendBeacon not possible, so we use sync XMLHttpRequest)
   useEffect(() => {
@@ -247,6 +261,42 @@ export function useSettings() {
     });
   }, [doSave]);
 
+  const toggleBookmark = useCallback((path: string) => {
+    setBookmarksState((prev) => {
+      const next = prev.includes(path) ? prev.filter((item) => item !== path) : [...prev, path];
+      bookmarksRef.current = next;
+      queueMicrotask(() => doSave({ bookmarksJson: JSON.stringify(next) }));
+      return next;
+    });
+  }, [doSave]);
+
+  const setBookmarks = useCallback((val: string[] | ((prev: string[]) => string[])) => {
+    setBookmarksState((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      bookmarksRef.current = next;
+      queueMicrotask(() => doSave({ bookmarksJson: JSON.stringify(next) }));
+      return next;
+    });
+  }, [doSave]);
+
+  const togglePinnedTab = useCallback((path: string) => {
+    setPinnedTabsState((prev) => {
+      const next = prev.includes(path) ? prev.filter((item) => item !== path) : [...prev, path];
+      pinnedTabsRef.current = next;
+      queueMicrotask(() => doSave({ pinnedTabsJson: JSON.stringify(next) }));
+      return next;
+    });
+  }, [doSave]);
+
+  const setPinnedTabs = useCallback((val: string[] | ((prev: string[]) => string[])) => {
+    setPinnedTabsState((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      pinnedTabsRef.current = next;
+      queueMicrotask(() => doSave({ pinnedTabsJson: JSON.stringify(next) }));
+      return next;
+    });
+  }, [doSave]);
+
   const chooseVaultFolder = useCallback(async (current?: string) => {
     const selected = await appInvoke<string | null>("choose_vault_folder", { current });
     return selected;
@@ -277,6 +327,8 @@ export function useSettings() {
     collapsedDirs, setCollapsedDirs,
     openTabs, setOpenTabs,
     selectedPath, setSelectedPath,
+    bookmarks, setBookmarks, toggleBookmark,
+    pinnedTabs, setPinnedTabs, togglePinnedTab,
     settingsLoaded, startup,
     chooseVaultFolder,
   };

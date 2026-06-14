@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from "react";
 import { useVault } from "../hooks/useVault";
 import { useAppContext } from "./AppContext";
-import type { BacklinkEntry, LineRevealRequest, MentionEntry, NoteEntry, Preview, TaskEntry } from "../types";
+import type { BacklinkEntry, EditorInsertRequest, LineRevealRequest, MentionEntry, NoteEntry, Preview, TaskEntry } from "../types";
 
 type SearchResult = { path: string; title: string; snippet: string; line: number; score: number };
 type TagEntry = { name: string; count: number };
@@ -19,6 +19,10 @@ export type VaultContextType = {
   isDirty: boolean;
   setIsDirty: (v: boolean) => void;
   isLoading: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  goBack: () => Promise<void>;
+  goForward: () => Promise<void>;
   isPaletteOpen: boolean;
   setIsPaletteOpen: (v: boolean) => void;
   isSettingsOpen: boolean;
@@ -30,6 +34,7 @@ export type VaultContextType = {
   tasks: TaskEntry[];
   isLoadingTasks: boolean;
   lineRevealRequest: LineRevealRequest | null;
+  editorInsertRequest: EditorInsertRequest | null;
   refreshTasks: () => Promise<void>;
   openTask: (task: TaskEntry) => Promise<void>;
   toggleTask: (task: TaskEntry) => Promise<void>;
@@ -48,6 +53,7 @@ export type VaultContextType = {
   selectedEntry: NoteEntry | undefined;
   files: NoteEntry[];
   notes: NoteEntry[];
+  recentEntries: NoteEntry[];
   visibleEntries: NoteEntry[];
   quickResults: NoteEntry[];
   ftsResults: SearchResult[];
@@ -61,7 +67,10 @@ export type VaultContextType = {
   saveCurrent: () => Promise<void>;
   handleSelectFile: (entry: NoteEntry) => Promise<void>;
   createNote: () => Promise<void>;
+  createNoteWithTitle: (title: string) => Promise<void>;
   openDailyNote: () => Promise<void>;
+  insertTextAtCursor: (text: string) => void;
+  insertTemplate: (template: NoteEntry) => Promise<void>;
   closeTab: (path: string) => Promise<void>;
   deleteEntry: (entry: NoteEntry) => Promise<void>;
   renameEntry: (entry: NoteEntry, newName: string) => Promise<string | null>;

@@ -63,6 +63,36 @@ function AppInner() {
   }, [app.settingsLoaded, app.activeVault]);
 
   useEffect(() => {
+    if (!app.settingsLoaded || vault.entries.length === 0) return;
+    const validPaths = new Set(vault.entries.map((entry) => entry.path));
+    const validFiles = new Set(vault.entries.filter((entry) => !entry.isDir).map((entry) => entry.path));
+    const same = (a: string[], b: string[]) => a.length === b.length && a.every((item, index) => item === b[index]);
+
+    const nextPinnedTabs = app.pinnedTabs.filter((path) => validFiles.has(path));
+    if (!same(app.pinnedTabs, nextPinnedTabs)) app.setPinnedTabs(nextPinnedTabs);
+
+    const nextBookmarks = app.bookmarks.filter((path) => validPaths.has(path));
+    if (!same(app.bookmarks, nextBookmarks)) app.setBookmarks(nextBookmarks);
+
+    const validSelected = app.selectedPath && validFiles.has(app.selectedPath) ? app.selectedPath : "";
+    const nextOpenTabs = [
+      ...nextPinnedTabs,
+      ...app.openTabs.filter((path) => validFiles.has(path) && !nextPinnedTabs.includes(path)),
+      ...(validSelected && !app.openTabs.includes(validSelected) && !nextPinnedTabs.includes(validSelected) ? [validSelected] : []),
+    ];
+    if (!same(app.openTabs, nextOpenTabs)) app.setOpenTabs(nextOpenTabs);
+
+    if (validSelected) return;
+    const fallback = nextOpenTabs[0] ?? "";
+    if (!fallback) {
+      if (app.selectedPath) app.setSelectedPath("");
+      return;
+    }
+    const entry = vault.entries.find((item) => item.path === fallback);
+    if (entry) void vault.handleSelectFile(entry);
+  }, [app.settingsLoaded, vault.entries, app.openTabs, app.pinnedTabs, app.bookmarks, app.selectedPath]);
+
+  useEffect(() => {
     if (vault.entries.length === 0) return;
     const dirPaths = vault.entries.filter((e) => e.isDir).map((e) => e.path);
     if (dirPaths.length === 0) return;
@@ -89,8 +119,12 @@ function AppInner() {
     createNote: vault.createNote,
     openPalette: () => vault.setIsPaletteOpen(true),
     closeCurrentTab: () => {
-      if (vault.selectedPath) void vault.closeTab(vault.selectedPath);
+      if (!vault.selectedPath) return;
+      if (app.pinnedTabs.includes(vault.selectedPath)) app.togglePinnedTab(vault.selectedPath);
+      void vault.closeTab(vault.selectedPath);
     },
+    goBack: () => { void vault.goBack(); },
+    goForward: () => { void vault.goForward(); },
     shortcutSave: app.shortcutSave,
     shortcutPalette: app.shortcutPalette,
     shortcutNewNote: app.shortcutNewNote,

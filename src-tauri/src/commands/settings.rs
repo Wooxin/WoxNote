@@ -56,6 +56,8 @@ pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, S
         window_maximized: false,
         open_tabs_json: String::new(),
         selected_path: String::new(),
+        bookmarks_json: "[]".into(),
+        pinned_tabs_json: "[]".into(),
         ui_font: "HarmonyOS Sans".into(),
         code_font: "Cascadia Code".into(),
         collapsed_dirs_json: "[]".into(),
@@ -82,6 +84,8 @@ pub fn get_user_settings(app_handle: tauri::AppHandle) -> Result<UserSettings, S
     load_bool!(settings, &conn, "windowMaximized", window_maximized);
     load_str!(settings, &conn, "openTabsJson", open_tabs_json);
     load_str!(settings, &conn, "selectedPath", selected_path);
+    load_str!(settings, &conn, "bookmarksJson", bookmarks_json);
+    load_str!(settings, &conn, "pinnedTabsJson", pinned_tabs_json);
     load_str!(settings, &conn, "uiFont", ui_font);
     load_str!(settings, &conn, "codeFont", code_font);
     load_str!(settings, &conn, "collapsedDirsJson", collapsed_dirs_json);
@@ -130,6 +134,8 @@ pub fn save_user_settings(
         save_bool!(&conn, "windowMaximized", settings.window_maximized);
         save_str!(&conn, "openTabsJson", &settings.open_tabs_json);
         save_str!(&conn, "selectedPath", &settings.selected_path);
+        save_str!(&conn, "bookmarksJson", &settings.bookmarks_json);
+        save_str!(&conn, "pinnedTabsJson", &settings.pinned_tabs_json);
         save_str!(&conn, "uiFont", &settings.ui_font);
         save_str!(&conn, "codeFont", &settings.code_font);
         save_str!(&conn, "collapsedDirsJson", &settings.collapsed_dirs_json);

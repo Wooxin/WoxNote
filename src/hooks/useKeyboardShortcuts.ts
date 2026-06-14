@@ -6,6 +6,8 @@ type ShortcutActions = {
   createNote: () => Promise<void>;
   openPalette: () => void;
   closeCurrentTab: () => void;
+  goBack: () => void;
+  goForward: () => void;
   shortcutSave: string;
   shortcutPalette: string;
   shortcutNewNote: string;
@@ -40,6 +42,8 @@ export function useKeyboardShortcuts({
   createNote,
   openPalette,
   closeCurrentTab,
+  goBack,
+  goForward,
   shortcutSave,
   shortcutPalette,
   shortcutNewNote,
@@ -51,6 +55,8 @@ export function useKeyboardShortcuts({
       { def: shortcutPalette, action: openPalette },
       { def: shortcutNewNote, action: createNote },
       { def: shortcutCloseTab, action: closeCurrentTab },
+      { def: "Alt+ArrowLeft", action: goBack },
+      { def: "Alt+ArrowRight", action: goForward },
     ].flatMap((s) => {
       const parsed = parseShortcut(s.def);
       return parsed ? [{ ...parsed, action: s.action }] : [];
@@ -76,5 +82,5 @@ export function useKeyboardShortcuts({
     }
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
-  }, [enableKeyboardShortcuts, saveCurrent, createNote, openPalette, closeCurrentTab, shortcutSave, shortcutPalette, shortcutNewNote, shortcutCloseTab]);
+  }, [enableKeyboardShortcuts, saveCurrent, createNote, openPalette, closeCurrentTab, goBack, goForward, shortcutSave, shortcutPalette, shortcutNewNote, shortcutCloseTab]);
 }

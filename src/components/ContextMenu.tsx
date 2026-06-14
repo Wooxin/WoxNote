@@ -1,7 +1,8 @@
-import { FilePlus, FolderOpen, FolderPlus, Pencil, Trash2 } from "lucide-react";
+import { Copy, FilePlus, FolderOpen, FolderPlus, Link2, Pencil, Star, Trash2 } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 import { appInvoke } from "../bridge";
+import { titleFromPath } from "../utils/helpers";
 
 export function ContextMenu() {
   const app = useAppContext();
@@ -29,6 +30,21 @@ export function ContextMenu() {
     } catch (e) { console.error("new_folder/note failed:", e); }
   };
 
+  const copyText = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+  };
+
   return (
     <>
       {vault.contextMenu && (
@@ -49,6 +65,20 @@ export function ContextMenu() {
                 </button>
               </>
             )}
+            <button onClick={() => { app.toggleBookmark(vault.contextMenu!.entry.path); vault.setContextMenu(null); }}>
+              <Star size={16} />
+              <span>{app.bookmarks.includes(vault.contextMenu.entry.path) ? app.t.removeBookmark : app.t.addBookmark}</span>
+            </button>
+            {!vault.contextMenu.entry.isDir && (
+              <button onClick={() => { void copyText(`[[${titleFromPath(vault.contextMenu!.entry.path)}]]`); vault.setContextMenu(null); }}>
+                <Link2 size={16} />
+                <span>{app.t.copyLink}</span>
+              </button>
+            )}
+            <button onClick={() => { void copyText(vault.contextMenu!.entry.path); vault.setContextMenu(null); }}>
+              <Copy size={16} />
+              <span>{app.t.copyPath}</span>
+            </button>
             <button onClick={() => { vault.setRenamingEntry(vault.contextMenu!.entry); vault.setContextMenu(null); }}>
               <Pencil size={16} />
               <span>{app.t.rename}</span>

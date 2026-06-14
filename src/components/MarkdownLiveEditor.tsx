@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Columns3, Copy, FileCode, Minus, Paintbrush, Scissors, Table, X, ClipboardPaste } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Columns3, Copy, FileCode, Minus, Paintbrush, Pin, PinOff, Scissors, Table, X, ClipboardPaste } from "lucide-react";
 import { useAppContext } from "../contexts/AppContext";
 import { useVaultContext } from "../contexts/VaultContext";
 import { BinaryPreview } from "./BinaryPreview";
@@ -30,6 +30,7 @@ export function MarkdownLiveEditor() {
   const app = useAppContext();
   const vault = useVaultContext();
   const [editorMenu, setEditorMenu] = useState<{ x: number; y: number } | null>(null);
+  const [tabMenu, setTabMenu] = useState<{ x: number; y: number; path: string } | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const scrollToHeadingRef = useRef<((text: string) => void) | null>(null);
@@ -42,6 +43,10 @@ export function MarkdownLiveEditor() {
 
   const [titleValue, setTitleValue] = useState("");
   const [wordCount, setWordCount] = useState(0);
+  const displayTabs = useMemo(() => {
+    const pinned = new Set(app.pinnedTabs);
+    return [...vault.openTabs].sort((a, b) => Number(pinned.has(b)) - Number(pinned.has(a)));
+  }, [app.pinnedTabs, vault.openTabs]);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,8 +58,8 @@ export function MarkdownLiveEditor() {
 
   const charCount = (vault.content || "").replace(/\s/g, "").length;
 
-  const insertAtEnd = useCallback((template: string) => {
-    vault.handleContentChange(vault.content ? vault.content + "\n\n" + template : template);
+  const insertAtCursor = useCallback((template: string) => {
+    vault.insertTextAtCursor(template);
   }, [vault]);
 
   const getSelectedText = useCallback((): string => {
@@ -125,15 +130,49 @@ export function MarkdownLiveEditor() {
     if (entry && nextTitle && nextTitle !== entry.name) void handleRenameFile(entry, nextTitle);
   };
 
+  const tabMenuPath = tabMenu?.path ?? "";
+  const isTabPinned = app.pinnedTabs.includes(tabMenuPath);
+  const closeTabFromMenu = useCallback((path: string) => {
+    if (app.pinnedTabs.includes(path)) app.togglePinnedTab(path);
+    setTabMenu(null);
+    void vault.closeTab(path);
+  }, [app, vault]);
+  const closeOtherTabs = useCallback((path: string) => {
+    const pinned = new Set(app.pinnedTabs);
+    const keep = vault.openTabs.filter((item) => item === path || pinned.has(item));
+    app.setOpenTabs(keep);
+    app.setPinnedTabs((current) => current.filter((item) => keep.includes(item)));
+    if (!keep.includes(vault.selectedPath)) {
+      const fallback = keep.find((item) => item === path) ?? keep[keep.length - 1];
+      const entry = vault.entries.find((item) => item.path === fallback);
+      if (entry) void vault.handleSelectFile(entry);
+    }
+    setTabMenu(null);
+  }, [app, vault]);
+  const closeTabsToRight = useCallback((path: string) => {
+    const index = displayTabs.indexOf(path);
+    if (index < 0) return;
+    const pinned = new Set(app.pinnedTabs);
+    const keepSet = new Set(displayTabs.filter((item, itemIndex) => itemIndex <= index || pinned.has(item)));
+    const keep = vault.openTabs.filter((item) => keepSet.has(item));
+    app.setOpenTabs(keep);
+    app.setPinnedTabs((current) => current.filter((item) => keep.includes(item)));
+    if (!keep.includes(vault.selectedPath)) {
+      const entry = vault.entries.find((item) => item.path === path);
+      if (entry) void vault.handleSelectFile(entry);
+    }
+    setTabMenu(null);
+  }, [app, displayTabs, vault]);
+
   const menuItems = [
     { icon: <Copy size={15} />, label: app.t.copy, action: handleCopy },
     { icon: <Scissors size={15} />, label: app.t.cut, action: handleCut },
     { icon: <ClipboardPaste size={15} />, label: app.t.paste, action: handlePaste },
     { icon: <Paintbrush size={15} />, label: app.t.textColor, action: () => setShowColorPicker((v) => !v) },
-    { icon: <Table size={15} />, label: app.t.insertTable, action: () => { insertAtEnd(TABLE_TEMPLATE); setEditorMenu(null); } },
-    { icon: <FileCode size={15} />, label: app.t.insertCodeBlock, action: () => { insertAtEnd(CODE_TEMPLATE); setEditorMenu(null); } },
-    { icon: <Columns3 size={15} />, label: app.t.insertCallout, action: () => { insertAtEnd(CALLOUT_TEMPLATE); setEditorMenu(null); } },
-    { icon: <Minus size={15} />, label: app.t.insertDivider, action: () => { insertAtEnd("---"); setEditorMenu(null); } },
+    { icon: <Table size={15} />, label: app.t.insertTable, action: () => { insertAtCursor(TABLE_TEMPLATE); setEditorMenu(null); } },
+    { icon: <FileCode size={15} />, label: app.t.insertCodeBlock, action: () => { insertAtCursor(CODE_TEMPLATE); setEditorMenu(null); } },
+    { icon: <Columns3 size={15} />, label: app.t.insertCallout, action: () => { insertAtCursor(CALLOUT_TEMPLATE); setEditorMenu(null); } },
+    { icon: <Minus size={15} />, label: app.t.insertDivider, action: () => { insertAtCursor("---"); setEditorMenu(null); } },
   ];
 
   return (
@@ -141,20 +180,34 @@ export function MarkdownLiveEditor() {
       <div className="tabs-bar">
         {vault.openTabs.length === 0 ? (
           <div className="empty-tab">{app.t.noFileOpen}</div>
-        ) : vault.openTabs.map((path) => {
+        ) : displayTabs.map((path) => {
           const entry = vault.entries.find((item) => item.path === path);
+          const pinned = app.pinnedTabs.includes(path);
           return (
-            <button key={path} className={`tab ${path === vault.selectedEntry?.path ? "active" : ""}`}
+            <button key={path} className={`tab ${path === vault.selectedEntry?.path ? "active" : ""} ${pinned ? "pinned" : ""}`}
               onClick={() => entry && void vault.handleSelectFile(entry)}
-              onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); void vault.closeTab(path); } }}>
+              onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); closeTabFromMenu(path); } }}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setTabMenu({ x: event.clientX, y: event.clientY, path });
+              }}>
+              {pinned && <Pin size={12} className="tab-pin" />}
               <span>{entry?.name ?? path}</span>
-              <X size={14} onClick={(event) => { event.stopPropagation(); void vault.closeTab(path); }} />
+              <X size={14} onClick={(event) => { event.stopPropagation(); closeTabFromMenu(path); }} />
             </button>
           );
         })}
       </div>
 
       <div className="note-toolbar">
+        <div className="note-nav">
+          <button className="icon-button" title={app.t.goBack} disabled={!vault.canGoBack} onClick={() => void vault.goBack()}>
+            <ArrowLeft size={16} />
+          </button>
+          <button className="icon-button" title={app.t.goForward} disabled={!vault.canGoForward} onClick={() => void vault.goForward()}>
+            <ArrowRight size={16} />
+          </button>
+        </div>
         <div className="note-title">
           {editingTitle && vault.selectedEntry ? (
             <input className="title-input" value={titleValue}
@@ -188,10 +241,11 @@ export function MarkdownLiveEditor() {
             onPasteImage={handlePasteImage}
             onSave={() => void vault.saveCurrent()}
             noteTitles={vault.notes.map(e => e.name.replace(/\.(md|markdown)$/i, ""))}
-            onClickWikiLink={(title) => vault.openLinkByTitle(title)} onClickTag={(tag) => vault.setGlobalSearch(tag)}
+            onClickWikiLink={(title) => vault.openLinkByTitle(title)} onClickTag={(tag) => vault.setGlobalSearch(`tag:${tag.replace(/^#/, "")}`)}
             onScrollToHeading={(fn) => { scrollToHeadingRef.current = fn; vault.setScrollToHeading(fn); }}
             onCursorChange={(line, col) => { setCursorLine(line); setCursorCol(col); }}
             revealLineRequest={vault.lineRevealRequest}
+            insertTextRequest={vault.editorInsertRequest}
             vaultPath={app.activeVault}
           />
         )}
@@ -226,6 +280,29 @@ export function MarkdownLiveEditor() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {tabMenu && (
+        <div className="context-menu-shield" onMouseDown={() => setTabMenu(null)}>
+          <div className="file-context-menu" style={{ left: tabMenu.x, top: tabMenu.y }} onMouseDown={(e) => e.stopPropagation()}>
+            <button onClick={() => { app.togglePinnedTab(tabMenu.path); setTabMenu(null); }}>
+              {isTabPinned ? <PinOff size={16} /> : <Pin size={16} />}
+              <span>{isTabPinned ? app.t.unpinTab : app.t.pinTab}</span>
+            </button>
+            <button onClick={() => closeTabFromMenu(tabMenu.path)}>
+              <X size={16} />
+              <span>{app.t.closeTab}</span>
+            </button>
+            <button onClick={() => closeOtherTabs(tabMenu.path)}>
+              <Columns3 size={16} />
+              <span>{app.t.closeOtherTabs}</span>
+            </button>
+            <button onClick={() => closeTabsToRight(tabMenu.path)}>
+              <ArrowRight size={16} />
+              <span>{app.t.closeTabsToRight}</span>
+            </button>
           </div>
         </div>
       )}

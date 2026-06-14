@@ -17,7 +17,7 @@ import { STYLE_ID, CSS, woxHighlightStyle } from "./styles";
 import { setEditorFocused, isEditorFocused, focusEffect, previewField, setVaultPath } from "./decorations";
 import { cmTheme, darkTheme } from "./theme";
 import { appInvoke } from "../../bridge";
-import type { LineRevealRequest } from "../../types";
+import type { EditorInsertRequest, LineRevealRequest } from "../../types";
 
 // ── Props ───────────────────────────────────────────────────
 type ScrollToHeadingFn = (text: string) => void;
@@ -33,6 +33,7 @@ type Props = {
   onScrollToHeading?: (fn: ScrollToHeadingFn) => void;
   onCursorChange?: (line: number, col: number) => void;
   revealLineRequest?: LineRevealRequest | null;
+  insertTextRequest?: EditorInsertRequest | null;
   vaultPath?: string;
 };
 
@@ -40,7 +41,7 @@ type Props = {
 export function CMLivePreview({
   content, contentWidth, contentFontSize, noteTitles,
   onContentChange, onPasteImage, onSave, onClickWikiLink, onClickTag,
-  onScrollToHeading, onCursorChange, revealLineRequest, vaultPath,
+  onScrollToHeading, onCursorChange, revealLineRequest, insertTextRequest, vaultPath,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -436,6 +437,18 @@ export function CMLivePreview({
     }, 0);
     return () => window.clearTimeout(id);
   }, [revealLineRequest?.nonce, revealLineRequest?.line]);
+
+  useEffect(() => {
+    if (!insertTextRequest) return;
+    const v = viewRef.current;
+    if (!v) return;
+    const sel = v.state.selection.main;
+    v.dispatch({
+      changes: { from: sel.from, to: sel.to, insert: insertTextRequest.text },
+      selection: { anchor: sel.from + insertTextRequest.text.length },
+    });
+    v.focus();
+  }, [insertTextRequest?.nonce, insertTextRequest?.text]);
 
     // Use CSS custom property for content width (avoids CodeMirror DOM observer conflicts)
   useEffect(() => {

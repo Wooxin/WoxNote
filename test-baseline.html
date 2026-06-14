@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Baseline Test</title>
+<style>
+body { margin: 20px; background: #2E3440; color: #d8dee9; font-family: sans-serif; }
+#editor { max-width: 900px; height: 300px; border: 1px solid #4C566A; margin: 10px 0; }
+.log { font-size: 12px; color: #88C0D0; }
+</style></head><body>
+<div class="log">Click on each line. Cursor should land on the SAME line.</div>
+<div id="pos">Cursor: line ?, col ?</div>
+<div id="editor"></div>
+<script type="module">
+import {EditorView,keymap} from "https://esm.sh/@codemirror/view@6.35.0";
+import {EditorState} from "https://esm.sh/@codemirror/state@6.5.0";
+import {defaultKeymap,history,historyKeymap} from "https://esm.sh/@codemirror/commands@6.7.1";
+import {markdown,markdownLanguage} from "https://esm.sh/@codemirror/lang-markdown@6.3.2";
+import {syntaxHighlighting} from "https://esm.sh/@codemirror/language@6.10.8";
+import {HighlightStyle} from "https://esm.sh/@codemirror/language@6.10.8";
+import {tags} from "https://esm.sh/@lezer/highlight@1.2.1";
+
+const content = `Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8`;
+
+const view = new EditorView({
+  state: EditorState.create({
+    doc: content,
+    extensions: [
+      history(),
+      markdown({base:markdownLanguage}),
+      syntaxHighlighting(HighlightStyle.define([
+        {tag:tags.heading1,fontWeight:"bold",color:"#8bbd25"}
+      ]),{fallback:true}),
+      EditorView.lineWrapping,
+      keymap.of([...defaultKeymap,...historyKeymap]),
+      EditorView.updateListener.of(u => {
+        if (u.selectionSet) {
+          const pos = u.state.selection.main.head;
+          const line = u.state.doc.lineAt(pos);
+          document.getElementById("pos").textContent = `Cursor: line ${line.number}`;
+        }
+      }),
+    ]
+  }),
+  parent: document.getElementById("editor"),
+});
+</script></body></html>

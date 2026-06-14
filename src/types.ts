@@ -33,6 +33,11 @@ export type LineRevealRequest = {
   nonce: number;
 };
 
+export type EditorInsertRequest = {
+  text: string;
+  nonce: number;
+};
+
 export type BacklinkEntry = {
   path: string;
   line: number;
@@ -95,4 +100,6 @@ export type UserSettings = {
   collapsedDirsJson: string;
   openTabsJson: string;
   selectedPath: string;
+  bookmarksJson: string;
+  pinnedTabsJson: string;
 };

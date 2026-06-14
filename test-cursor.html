@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Cursor Offset Test</title>
+<style>
+body { margin: 20px; background: #2E3440; color: #d8dee9; font-family: sans-serif; }
+#editor { max-width: 900px; height: 500px; border: 1px solid #4C566A; margin-top: 10px; }
+.log { font-size: 12px; color: #88C0D0; margin-bottom: 5px; }
+/* =========================================================
+   Obsidian-style Live Preview CSS - WoxNote
+   ========================================================= */
+
+/* -- Core editor -- */
+.cm-editor { height: 100% !important; background: var(--nord0, #2E3440); }
+.cm-scroller { overflow: auto !important; height: 100% !important; }
+
+.cm-editor .cm-content,
+.cm-editor .cm-line {
+  font-family: var(--ui-font, "HarmonyOS Sans", sans-serif) !important;
+}
+
+/* =========================================================
+   HEADINGS - no underlines
+   ========================================================= */
+.cm-editor .cm-line,
+.cm-editor .cm-line *,
+.cm-editor .cm-content * {
+  text-decoration: none !important;
+  border-bottom: none !important;
+}
+.cm-editor u, .cm-editor u *,
+.cm-editor [class*="tok-heading"],
+.cm-editor [class*="heading"] {
+  text-decoration: none !important;
+  border-bottom: none !important;
+}
+.cm-editor .cm-md-underline { text-decoration: underline !important; }
+.cm-editor .cm-strikethrough, .cm-editor .tok-strikethrough { text-decoration: line-through !important; }
+.cm-editor .cm-md-link, .cm-editor .tok-link { text-decoration: underline !important; }
+
+.cm-editor .cm-md-heading-text { font-weight: 700 !important; }
+
+.cm-editor .cm-md-heading-1, .cm-editor .cm-md-heading-2,
+.cm-editor .cm-md-heading-3, .cm-editor .cm-md-heading-4,
+.cm-editor .cm-md-heading-5, .cm-editor .cm-md-heading-6 {
+  margin-top: 0 !important; margin-bottom: 0 !important;
+  padding-top: 0 !important; padding-bottom: 0 !important;
+}
+.cm-editor .cm-md-heading-text.cm-md-heading-1 { font-size: 1.8em !important; color: #8bbd25 !important; }
+.cm-editor .cm-md-heading-text.cm-md-heading-2 { font-size: 1.5em !important; color: #4caf50 !important; }
+.cm-editor .cm-md-heading-text.cm-md-heading-3 { font-size: 1.25em !important; color: #3baea0 !important; }
+.cm-editor .cm-md-heading-text.cm-md-heading-4 { font-size: 1.1em !important; color: #719cd6 !important; }
+.cm-editor .cm-md-heading-text.cm-md-heading-5 { font-size: 1.0em !important; color: #9c8aef !important; }
+.cm-editor .cm-md-heading-text.cm-md-heading-6 { font-size: 0.9em !important; color: #d99aee !important; }
+
+/* =========================================================
+   INLINE FORMATTING
+   ========================================================= */
+.cm-editor .cm-md-bold { font-weight: 700 !important; color: #d8dee9; }
+.cm-editor .cm-md-italic { font-style: italic !important; color: #d8dee9; }
+.cm-editor .cm-md-strikethrough { text-decoration: line-through !important; color: #7f8a96; }
+.cm-editor .cm-md-highlight { background: rgba(235,203,139,0.3); color: #d8dee9; padding: 0 2px; border-radius: 3px; }
+.cm-editor .cm-md-underline { text-decoration: underline !important; color: #d8dee9; }
+.cm-editor .cm-md-code {
+  background: rgba(76,86,106,0.35);
+  color: #d8dee9;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+  font-size: 0.9em; padding: 1px 4px; border-radius: 4px;
+}
+.cm-editor .cm-md-link { color: #88C0D0; text-decoration: underline; cursor: pointer; }
+.cm-editor .cm-md-tag { color: #81A1C1; background: rgba(129,161,193,0.1); border-radius: 3px; padding: 0 2px; }
+.cm-editor .cm-md-list-number { color: #88C0D0; font-weight: 600; margin-right: 4px; }
+.cm-editor .cm-md-list-bullet { color: #88C0D0; margin-right: 4px; }
+.cm-editor .cm-md-task-marker { color: #7eb8ff; }
+
+/* =========================================================
+   CODE BLOCKS - frame with rounded corners
+   ========================================================= */
+.cm-editor .cm-md-fenced-line {
+  background: rgba(24, 29, 41, 0.85);
+  border-left: 1px solid rgba(76, 86, 106, 0.6) !important;
+  border-right: 1px solid rgba(76, 86, 106, 0.6) !important;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace !important;
+  font-size: 0.88em;
+}
+.cm-editor .cm-md-fenced-line-first {
+  background: rgba(24, 29, 41, 0.85);
+  border-left: 1px solid rgba(76, 86, 106, 0.6);
+  border-right: 1px solid rgba(76, 86, 106, 0.6);
+  border-top: none;
+  border-radius: 0;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace !important;
+  font-size: 0.88em;
+}
+.cm-editor .cm-md-fenced-line-last {
+  background: rgba(24, 29, 41, 0.85);
+  border-left: 1px solid rgba(76, 86, 106, 0.6);
+  border-right: 1px solid rgba(76, 86, 106, 0.6);
+  border-bottom: 1px solid rgba(76, 86, 106, 0.6);
+  border-top: none;
+  border-radius: 0;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace !important;
+  font-size: 0.88em;
+}
+.cm-editor .cm-md-fenced-line-middle {
+  background: rgba(24, 29, 41, 0.85);
+  border-left: 1px solid rgba(76, 86, 106, 0.6);
+  border-right: 1px solid rgba(76, 86, 106, 0.6);
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace !important;
+  font-size: 0.88em;
+}
+.cm-editor .cm-md-fenced-line-single {
+  background: rgba(24, 29, 41, 0.85);
+  border-left: 1px solid rgba(76, 86, 106, 0.6);
+  border-right: 1px solid rgba(76, 86, 106, 0.6);
+  border-top: none;
+  border-bottom: none;
+  border-radius: 0;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace !important;
+  font-size: 0.88em;
+}
+
+/* Opening fence line frame — rounded top, flat bottom */
+.cm-editor .cm-md-fence-open {
+  background: rgba(36, 42, 56, 0.9) !important;
+  border: 1px solid rgba(76, 86, 106, 0.6) !important;
+  border-top: 1px solid rgba(76, 86, 106, 0.6) !important;
+  border-left: 1px solid rgba(76, 86, 106, 0.6) !important;
+  border-right: 1px solid rgba(76, 86, 106, 0.6) !important;
+  border-bottom: none !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+/* Closing fence line frame — flat top, rounded bottom */
+.cm-editor .cm-md-fence-close {
+  background: rgba(36, 42, 56, 0.9) !important;
+  border: 1px solid rgba(76, 86, 106, 0.6) !important;
+  border-left: 1px solid rgba(76, 86, 106, 0.6) !important;
+  border-right: 1px solid rgba(76, 86, 106, 0.6) !important;
+  border-bottom: 1px solid rgba(76, 86, 106, 0.6) !important;
+  border-top: none !important;
+  border-radius: 0 0 8px 8px !important;
+}
+/* Dimmed fence markers (\\\) on opening/closing lines */
+.cm-editor .cm-md-fence-mark {
+  color: rgba(163, 190, 204, 0.35) !important;
+  user-select: none !important;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace !important;
+}
+/* Language label widget — badge style */
+.cm-editor .cm-md-code-info-wrap {
+  display: inline;
+}
+.cm-editor .cm-md-code-info-text { display: inline; }
+.cm-editor .cm-md-code-info-copied { 
+  color: #A3BE8C !important;
+  font-weight: 600;
+}
+.cm-editor .cm-md-code-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78em;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 0 0 6px 6px;
+  background: rgba(94, 129, 172, 0.42);
+  color: #C0DEFF;
+  letter-spacing: 0.3px;
+  user-select: none;
+  vertical-align: middle;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace !important;
+  border: 1px solid rgba(94, 129, 172, 0.5) !important;
+  border-top: none !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.cm-editor .cm-md-code-info:hover {
+  background: rgba(94, 129, 172, 0.6);
+  color: #B8D4FF;
+  border-color: rgba(94, 129, 172, 0.55);
+}
+.cm-editor .cm-md-code-info-edit {
+  color: #88C0D0 !important;
+  font-size: 0.85em;
+  font-weight: 600;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace !important;
+  background: rgba(136, 192, 208, 0.22) !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(136, 192, 208, 0.35) !important;
+  display: inline !important;
+}
+
+/* =========================================================
+   BLOCKQUOTES
+   ========================================================= */
+.cm-editor .cm-md-blockquote {
+  border-left: 3px solid var(--cm-bq-border, #4C566A);
+  background: rgba(76,86,106,0.08);
+  margin-left: 0;
+  padding-left: 10px;
+  color: #c0c8d4;
+}
+
+/* =========================================================
+   HORIZONTAL RULES
+   ========================================================= */
+.cm-editor .cm-md-hr {
+  border-bottom: 2px solid var(--cm-hr-border, #434C5E) !important;
+}
+
+
+/* =========================================================
+   TABLES — full visual rendering
+   ========================================================= */
+/* === Rendered HTML table widget (reading mode) === */
+.cm-editor .cm-md-table-wrapper {
+  margin: 8px 0;
+  overflow-x: auto;
+}
+.cm-editor .cm-md-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.92em;
+  border: 1px solid #4C566A;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cm-editor .cm-md-table thead th {
+  background: rgba(59, 66, 82, 0.95);
+  color: #E5E9F0;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-bottom: 2px solid #88C0D0;
+  border-right: 1px solid #4C566A;
+  text-align: left;
+  white-space: nowrap;
+}
+.cm-editor .cm-md-table thead th:last-child {
+  border-right: none;
+}
+.cm-editor .cm-md-table tbody td {
+  padding: 6px 14px;
+  color: #D8DEE9;
+  border-bottom: 1px solid rgba(76, 86, 106, 0.4);
+  border-right: 1px solid rgba(76, 86, 106, 0.25);
+}
+.cm-editor .cm-md-table tbody td:last-child {
+  border-right: none;
+}
+.cm-editor .cm-md-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.cm-editor .cm-md-table tbody tr:nth-child(even) td {
+  background: rgba(46, 52, 64, 0.45);
+}
+.cm-editor .cm-md-table tbody tr:nth-child(odd) td {
+  background: rgba(46, 52, 64, 0.18);
+}
+
+/* === Edit-mode raw markdown table (cursor on table) === */
+.cm-editor .cm-md-table-header {
+  background: rgba(59, 66, 82, 0.9) !important;
+  font-weight: 700 !important;
+  color: #E5E9F0 !important;
+  letter-spacing: 0.4px;
+  border-top: 1px solid #88C0D0 !important;
+  border-bottom: 1px solid #88C0D0 !important;
+}
+.cm-editor .cm-md-table-header .cm-md-table-pipe {
+  color: #88C0D0 !important;
+  font-weight: 700;
+  padding: 0 8px !important;
+}
+.cm-editor .cm-md-table-sep-mark {
+  color: #4C566A !important;
+  font-size: 0.7em;
+  letter-spacing: 2px;
+  user-select: none !important;
+  background: rgba(46, 52, 64, 0.5) !important;
+}
+.cm-editor .cm-md-table-row-even {
+  background: rgba(46, 52, 64, 0.55) !important;
+}
+.cm-editor .cm-md-table-row-odd {
+  background: rgba(46, 52, 64, 0.25) !important;
+}
+.cm-editor .cm-md-table-row-even .cm-md-table-pipe,
+.cm-editor .cm-md-table-row-odd .cm-md-table-pipe {
+  color: #4C566A !important;
+  padding: 0 8px !important;
+  user-select: none !important;
+}
+.cm-editor .cm-md-table-pipe,
+.cm-editor .cm-md-table-pipe * {
+  color: #88C0D0 !important;
+  font-weight: 700 !important;
+  user-select: none !important;
+  padding: 0 8px !important;
+  background: rgba(136,192,208,0.08) !important;
+}
+.cm-editor .cm-md-table-header .cm-md-table-pipe,
+.cm-editor .cm-md-table-header .cm-md-table-pipe * {
+  color: #88C0D0 !important;
+  font-weight: 700;
+}
+.cm-editor .cm-md-table-sep-mark .cm-md-table-pipe,
+.cm-editor .cm-md-table-sep-mark .cm-md-table-pipe * {
+  color: #4C566A !important;
+}
+   TASKS
+.cm-editor .cm-md-task-marker { color: #7eb8ff; }
+
+/* =========================================================
+   CALLOUTS
+   ========================================================= */
+.cm-editor .cm-md-callout { border-radius: 8px; padding: 10px 16px; margin: 6px 0; border-left: 4px solid; display: block; }
+.cm-editor .cm-md-callout-note { background: rgba(94,129,172,0.12); border-color: #448aff; color: #b0cfff; }
+.cm-editor .cm-md-callout-warning { background: rgba(235,203,139,0.12); border-color: #ffc107; color: #ffe08a; }
+.cm-editor .cm-md-callout-danger { background: rgba(191,97,106,0.12); border-color: #ff5252; color: #ffa4a4; }
+.cm-editor .cm-md-callout-tip { background: rgba(163,190,140,0.12); border-color: #00e676; color: #8ff5c4; }
+.cm-editor .cm-md-callout-info { background: rgba(136,192,208,0.12); border-color: #00b0ff; color: #9edcff; }
+.cm-editor .cm-md-callout-example { background: rgba(180,142,173,0.12); border-color: #d500f9; color: #e8b0ff; }
+.cm-editor .cm-md-callout-quote { background: rgba(76,86,106,0.12); border-color: #9e9e9e; color: #c5c5c5; }
+.cm-editor .cm-md-callout-success { background: rgba(163,190,140,0.12); border-color: #00c853; color: #8ff5c4; }
+.cm-editor .cm-md-callout-title { font-weight: 600; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.5px; margin-bottom: 4px; opacity: 0.9; }
+/* Callout badge — [!type] marker styled as a colored pill */
+.cm-editor .cm-md-callout-badge {
+  font-size: 0.7em;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  margin-right: 4px;
+}
+.cm-editor .cm-md-callout-badge-note { background: rgba(68,138,255,0.25); color: #90c2ff; }
+.cm-editor .cm-md-callout-badge-warning { background: rgba(255,193,7,0.2); color: #ffd54f; }
+.cm-editor .cm-md-callout-badge-danger { background: rgba(255,82,82,0.2); color: #ff8a80; }
+.cm-editor .cm-md-callout-badge-tip { background: rgba(0,230,118,0.2); color: #69f0ae; }
+.cm-editor .cm-md-callout-badge-info { background: rgba(0,176,255,0.2); color: #80d8ff; }
+.cm-editor .cm-md-callout-badge-example { background: rgba(213,0,249,0.2); color: #ea80fc; }
+.cm-editor .cm-md-callout-badge-quote { background: rgba(158,158,158,0.2); color: #bdbdbd; }
+.cm-editor .cm-md-callout-badge-success { background: rgba(0,200,83,0.2); color: #69f0ae; }
+
+/* =========================================================
+   MARKER DIMMING
+   ========================================================= */
+.cm-editor .cm-md-marker-dim {
+  opacity: 0 !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+/* Callout prefix — subtle "> " indicator */
+.cm-editor .cm-md-callout-prefix {
+  opacity: 0.25 !important;
+  user-select: none !important;
+}
+/* Callout badge in edit mode — slightly dimmer */
+.cm-editor .cm-md-callout-badge-edit {
+  opacity: 0.55 !important;
+}
+}
+
+/* =========================================================
+   IMAGES
+   ========================================================= */
+.cm-editor .cm-md-image-container { display: block; text-align: center; margin: 12px 0; }
+.cm-editor .cm-md-image-container img { max-width: 100%; max-height: 500px; border-radius: 8px; }
+</style></head><body>
+<div class="log">Click on any line - cursor position shown below. Check if cursor lands on correct line.</div>
+<div id="pos">Cursor: line ?, col ?</div>
+<div id="editor"></div>
+
+<script type="module">
+import {EditorView,keymap,Decoration,DecorationSet,WidgetType} from "https://esm.sh/@codemirror/view@6.35.0";
+import {EditorState,RangeSetBuilder,StateField,StateEffect} from "https://esm.sh/@codemirror/state@6.5.0";
+import {defaultKeymap,history,historyKeymap} from "https://esm.sh/@codemirror/commands@6.7.1";
+import {syntaxHighlighting,syntaxTree} from "https://esm.sh/@codemirror/language@6.10.8";
+import {markdown,markdownLanguage} from "https://esm.sh/@codemirror/lang-markdown@6.3.2";
+import {HighlightStyle} from "https://esm.sh/@codemirror/language@6.10.8";
+import {tags} from "https://esm.sh/@lezer/highlight@1.2.1";
+import {closeBrackets} from "https://esm.sh/@codemirror/autocomplete@6.18.4";
+
+// Inline the essential code from decorations.ts (simplified but keeps all widget/replace calls)
+let _editorFocused = true;
+function setEditorFocused(v) { _editorFocused = v; }
+function isEditorFocused() { return _editorFocused; }
+
+function* childrenOf(node) { let child = node.firstChild; while (child) { yield child; child = child.nextSibling; } }
+
+class EmptyWidget extends WidgetType {
+  toDOM() { const s = document.createElement("span"); s.style.cssText = "display:inline;font-size:0;line-height:0;color:transparent;user-select:none;pointer-events:none;"; return s; }
+  eq() { return true; }
+  ignoreEvent() { return true; }
+}
+
+// Simplified decorations builder - only includes code that could cause offset
+function buildDecorations(state) {
+  const b = new RangeSetBuilder();
+  const doc = state.doc;
+  const sel = state.selection.main;
+  const selLineFrom = doc.lineAt(sel.from).from;
+  const selLineTo = doc.lineAt(Math.max(sel.from, sel.to)).to;
+  const focused = _editorFocused;
+  const tree = syntaxTree(state);
+  const decos = [];
+  
+  tree.iterate({
+    enter(ref) {
+      const node = ref.node, from = node.from, to = node.to, kind = node.name;
+      const lineOverlaps = focused && !(to <= selLineFrom || from >= selLineTo);
+      
+      // Code blocks
+      if (kind === "FencedCode" || kind === "CodeBlock") {
+        let isOpenFence = true;
+        const walk = (n) => {
+          for (const child of childrenOf(n)) {
+            const cKind = child.name, cFrom = child.from, cTo = child.to;
+            if (cKind === "CodeMark") {
+              const cmText = doc.sliceString(cFrom, cTo);
+              const tickMatch = cmText.match(/^`{3,}|~{3,}/);
+              if (tickMatch) {
+                const tickLen = tickMatch[0].length;
+                const openFlag = isOpenFence; isOpenFence = false;
+                if (!lineOverlaps) {
+                  if (openFlag) {
+                    decos.push({from:cFrom,to:cFrom,deco:Decoration.line({class:"cm-md-fence-open"})});
+                    decos.push({from:cFrom,to:cTo,deco:Decoration.replace({widget:new EmptyWidget()})});
+                  } else {
+                    decos.push({from:cFrom,to:cFrom,deco:Decoration.line({class:"cm-md-fence-close"})});
+                    decos.push({from:cFrom,to:cTo,deco:Decoration.replace({widget:new EmptyWidget()})});
+                  }
+                } else {
+                  decos.push({from:cFrom,to:cFrom+tickLen,deco:Decoration.mark({class:"cm-md-marker-edit"})});
+                }
+              }
+            } else if (cKind === "CodeText") {
+              const sLine = doc.lineAt(cFrom), eLine = doc.lineAt(Math.max(cFrom,cTo-1));
+              for (let i = sLine.number; i <= eLine.number; i++) {
+                decos.push({from:doc.line(i).from,to:doc.line(i).from,deco:Decoration.line({class:"cm-md-fenced-line"})});
+              }
+            }
+            walk(child);
+          }
+        };
+        walk(node);
+      }
+      
+      // Blockquote - > hidden unless cursor on line
+      else if (kind === "Blockquote") {
+        const startLine = doc.lineAt(from), endLine = doc.lineAt(Math.max(from,to-1));
+        for (let i = startLine.number; i <= endLine.number; i++) {
+          const ln = doc.line(i);
+          decos.push({from:ln.from,to:ln.from,deco:Decoration.line({class:"cm-md-blockquote"})});
+          const m = ln.text.match(/^((?:\s*>)+)\s?/);
+          if (m) {
+            const mk = lineOverlaps ? "cm-md-marker-edit" : "cm-md-marker-dim";
+            decos.push({from:ln.from,to:ln.from+m[1].length,deco:Decoration.mark({class:mk})});
+          }
+        }
+      }
+      
+      // HR - hide --- unless cursor on line
+      else if (kind === "HorizontalRule") {
+        decos.push({from,to:from,deco:Decoration.line({class:"cm-md-hr"})});
+        if (!lineOverlaps) {
+          decos.push({from,to,deco:Decoration.mark({class:"cm-md-marker-dim"})});
+        } else {
+          decos.push({from,to,deco:Decoration.mark({class:"cm-md-marker-edit"})});
+        }
+      }
+      
+      // Table - line decorations only
+      else if (kind === "Table" || kind === "GFMTable") {
+        let rowIdx = 0;
+        for (const child of childrenOf(node)) {
+          const cFrom = child.from, cTo = child.to, cKind = child.name;
+          if (cKind === "TableHeader" || cKind === "TableHead") {
+            decos.push({from:cFrom,to:cFrom,deco:Decoration.line({class:"cm-md-table-header"})});
+          } else if (cKind === "TableDelimiter" || cKind === "TableSeparator") {
+            const sepClass = lineOverlaps ? "cm-md-marker-edit" : "cm-md-marker-dim";
+            decos.push({from:cFrom,to:cFrom,deco:Decoration.line({class:"cm-md-table-sep-mark"})});
+            decos.push({from:cFrom,to:cTo,deco:Decoration.mark({class:sepClass})});
+          } else if (cKind === "TableRow") {
+            const rowClass = rowIdx % 2 === 0 ? "cm-md-table-row-even" : "cm-md-table-row-odd";
+            rowIdx++;
+            decos.push({from:cFrom,to:cFrom,deco:Decoration.line({class:rowClass})});
+          }
+        }
+      }
+    }
+  });
+  
+  decos.sort((a,b)=>a.from-b.from);
+  for (const d of decos) {
+    if (d.from >= 0 && d.to <= doc.length && d.from < d.to) b.add(d.from,d.to,d.deco);
+    else if (d.from === d.to && d.from >= 0 && d.from <= doc.length) b.add(d.from,d.from,d.deco);
+  }
+  return b.finish();
+}
+
+const focusEffect = StateEffect.define();
+const previewField = StateField.define({
+  create(s) { return buildDecorations(s); },
+  update(decos,tr) {
+    if (tr.docChanged || tr.selection || tr.effects.some(e=>e.is(focusEffect)))
+      try { return buildDecorations(tr.state); } catch(e) { return decos; }
+    return decos;
+  },
+  provide:f=>EditorView.decorations.from(f)
+});
+
+// Test content with various elements that could cause offset
+const content = `Line 1: Normal text
+Line 2: Normal text
+> Line 3: Blockquote - click here
+Line 4: Normal after blockquote
+Line 5: Normal
+---
+Line 7: After HR - click here
+Line 8: Normal
+Line 9: Normal
+
+```python
+def hello():
+    print("world")
+```
+Line 13: After code block - click here
+Line 14: Normal
+
+| Col A | Col B |
+| --- | --- |
+| A1 | B1 |
+| A2 | B2 |
+Line 20: After table - click here
+Line 21: Normal
+Line 22: Normal`;
+
+const woxHL = HighlightStyle.define([
+  {tag:tags.heading1,fontWeight:"bold",color:"#8bbd25",textDecoration:"none"},
+  {tag:tags.heading2,fontWeight:"bold",color:"#4caf50",textDecoration:"none"},
+  {tag:tags.strong,fontWeight:"bold"},
+  {tag:tags.emphasis,fontStyle:"italic"},
+]);
+
+const view = new EditorView({
+  state: EditorState.create({
+    doc: content,
+    extensions: [
+      previewField,
+      history(),
+      markdown({base:markdownLanguage}),
+      syntaxHighlighting(woxHL,{fallback:true}),
+      EditorView.lineWrapping,
+      closeBrackets(),
+      keymap.of([...defaultKeymap,...historyKeymap]),
+      EditorView.updateListener.of(u => {
+        if (u.selectionSet) {
+          const pos = u.state.selection.main.head;
+          const line = u.state.doc.lineAt(pos);
+          document.getElementById("pos").textContent = `Cursor: line ${line.number}, col ${pos - line.from + 1} (clicked visual line?)`;
+        }
+      }),
+    ]
+  }),
+  parent: document.getElementById("editor"),
+});
+</script></body></html>
